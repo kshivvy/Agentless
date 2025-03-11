@@ -248,6 +248,7 @@ Return just the locations wrapped with ```.
     def _parse_model_return_lines(self, content: str) -> list[str]:
         if content:
             return content.strip().split("\n")
+        return []
 
     def localize_irrelevant(self, top_n=1, mock=False):
         from agentless.util.api_requests import num_tokens_from_messages
