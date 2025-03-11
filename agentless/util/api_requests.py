@@ -1,5 +1,5 @@
 import time
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 import anthropic
 import openai
@@ -160,5 +160,49 @@ def request_anthropic_engine(
                 logger.warning("Retrying after an unknown error...")
             time.sleep(10 * retries)
         retries += 1
+
+    return ret
+
+
+def create_pub_sub_config(
+    data_str: str,
+    kernel_id: str = "als:bard",
+) -> Dict[str, Any]:
+    return {
+        "data_str": data_str,
+        "kernel_id": kernel_id,
+    }
+
+
+def request_pub_sub_engine(
+    config, logger, pub_sub_manager, max_retries=40, timeout=500, prompt_cache=False
+):
+    ret = None
+    retries = 0
+
+    while ret is None and retries < max_retries:
+        try:
+            start_time = time.time()
+
+            request_id = pub_sub_manager.get_request_id()
+
+            pub_sub_manager.publish(
+                data_str=config["data_str"],
+                request_id=request_id,
+                kernel_id=config["kernel_id"],
+            )
+
+            ret = ''
+            while not ret and (time.time() - start_time) <= timeout:
+                ret = pub_sub_manager.get(request_id)
+
+        except Exception as e:
+            logger.error("Unknown error. Waiting...", exc_info=True)
+            if time.time() - start_time >= timeout:
+                logger.warning("Request timed out. Retrying...")
+            else:
+                logger.warning("Retrying after an unknown error...")
+            time.sleep(10 * retries)
+        retries = 1
 
     return ret

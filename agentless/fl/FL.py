@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+import threading
 from agentless.repair.repair import construct_topn_file_context
 from agentless.util.compress_file import get_skeleton
 from agentless.util.postprocess_data import extract_code_blocks, extract_locs_for_files
@@ -10,6 +11,7 @@ from agentless.util.preprocess_data import (
     line_wrap_content,
     show_project_structure,
 )
+from agentless.pub_sub.manager import PubSubManager
 
 MAX_CONTEXT_LENGTH = 128000
 
@@ -238,6 +240,10 @@ Return just the locations wrapped with ```.
         self.model_name = model_name
         self.backend = backend
         self.logger = logger
+        self.pub_sub_manager = PubSubManager()
+
+        thread = threading.Thread(target=self.pub_sub_manager.listen)
+        thread.start()
 
     def _parse_model_return_lines(self, content: str) -> list[str]:
         if content:
@@ -271,6 +277,7 @@ Return just the locations wrapped with ```.
             max_tokens=2048,  # self.max_tokens,
             temperature=0,
             batch_size=1,
+            pub_sub_manager=self.pub_sub_manager,
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
@@ -339,6 +346,7 @@ Return just the locations wrapped with ```.
             max_tokens=self.max_tokens,
             temperature=0,
             batch_size=1,
+            pub_sub_manager=self.pub_sub_manager,
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
@@ -439,6 +447,7 @@ Return just the locations wrapped with ```.
             max_tokens=self.max_tokens,
             temperature=temperature,
             batch_size=1,
+            pub_sub_manager=self.pub_sub_manager,
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
@@ -523,6 +532,7 @@ Return just the locations wrapped with ```.
             max_tokens=self.max_tokens,
             temperature=temperature,
             batch_size=1,
+            pub_sub_manager=self.pub_sub_manager,
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
@@ -626,6 +636,7 @@ Return just the locations wrapped with ```.
             max_tokens=self.max_tokens,
             temperature=temperature,
             batch_size=num_samples,
+            pub_sub_manager=self.pub_sub_manager,
         )
         raw_trajs = model.codegen(
             message, num_samples=num_samples, prompt_cache=num_samples > 1
@@ -747,6 +758,7 @@ Return just the locations wrapped with ```.
             max_tokens=self.max_tokens,
             temperature=temperature,
             batch_size=num_samples,
+            pub_sub_manager=self.pub_sub_manager,
         )
         raw_trajs = model.codegen(message, num_samples=num_samples)
 

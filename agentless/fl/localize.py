@@ -568,22 +568,18 @@ def main():
     parser.add_argument(
         "--mock", action="store_true", help="Mock run to compute prompt tokens."
     )
+
+    # Can correspond to a LaMDA CLI compatible --kernel_id.
     parser.add_argument(
         "--model",
         type=str,
-        default="gpt-4o-2024-05-13",
-        choices=[
-            "gpt-4o-2024-05-13",
-            "deepseek-coder",
-            "gpt-4o-mini-2024-07-18",
-            "claude-3-5-sonnet-20241022",
-        ],
+        default="als:bard",
     )
     parser.add_argument(
         "--backend",
         type=str,
         default="openai",
-        choices=["openai", "deepseek", "anthropic"],
+        choices=["openai", "deepseek", "anthropic", "google-internal"],
     )
     parser.add_argument(
         "--dataset",

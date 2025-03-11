@@ -2,11 +2,15 @@ import json
 from abc import ABC, abstractmethod
 from typing import List
 
+from agentless.pub_sub.manager import PubSubManager
+
 from agentless.util.api_requests import (
     create_anthropic_config,
     create_chatgpt_config,
+    create_pub_sub_config,
     request_anthropic_engine,
     request_chatgpt_engine,
+    request_pub_sub_engine,
 )
 
 
@@ -383,6 +387,59 @@ class DeepSeekChatDecoder(DecoderBase):
     def is_direct_completion(self) -> bool:
         return False
 
+class PubSubChatDecoder(DecoderBase):
+    def __init__(self, name: str, logger, pub_sub_manager: PubSubManager, **kwargs) -> None:
+        super().__init__(name, logger, **kwargs)
+        self.pub_sub_manager = pub_sub_manager
+        self.kernel_id = name
+
+    def codegen(
+        self, message: str, num_samples: int = 1, prompt_cache: bool = False
+    ) -> List[dict]:
+        if self.temperature == 0:
+            assert num_samples == 1
+
+        trajs = []
+        for _ in range(num_samples):
+            # TODO(kshivvy): Apply the temperature, max_tokens, etc.
+            config = create_pub_sub_config(
+                data_str=message,
+                kernel_id=self.kernel_id,
+            )
+
+            ret = request_pub_sub_engine(
+                config,
+                self.logger,
+                self.pub_sub_manager,
+            )
+
+            if ret:
+                trajs.append(
+                    {
+                        "response": ret,
+                        # TODO(kshivvy): Get the number of completion tokens and prompt tokens.
+                        "usage": {
+                            "completion_tokens": 0,
+                            "prompt_tokens": 0,
+                        },
+                    }
+                )
+            else:
+                trajs.append(
+                    {
+                        "response": "",
+                        "usage": {
+                            "completion_tokens": 0,
+                            "prompt_tokens": 0,
+                        },
+                    }
+                )
+
+        return trajs
+
+    def is_direct_completion(self) -> bool:
+        return False
+
 
 def make_model(
     model: str,
@@ -391,6 +448,7 @@ def make_model(
     batch_size: int = 1,
     max_tokens: int = 1024,
     temperature: float = 0.0,
+    pub_sub_manager: PubSubManager | None = None,
 ):
     if backend == "openai":
         return OpenAIChatDecoder(
@@ -415,6 +473,15 @@ def make_model(
             batch_size=batch_size,
             max_new_tokens=max_tokens,
             temperature=temperature,
+        )
+    elif backend == "google-internal":
+        return PubSubChatDecoder(
+            name=model,
+            logger=logger,
+            batch_size=batch_size,
+            max_new_tokens=max_tokens,
+            temperature=temperature,
+            pub_sub_manager=pub_sub_manager
         )
     else:
         raise NotImplementedError

@@ -34,7 +34,8 @@ class PubSubManager:
         self.subscriber = pubsub_v1.SubscriberClient()
 
     def get_request_id(self) -> str:
-        return str(uuid.uuid1())
+        with self.lock:
+            return str(uuid.uuid1())
 
     def publish(self, data_str: str, request_id: str, kernel_id: str | None = None, topic_id: str = _REQUEST_TOPIC_ID) -> str:
         topic_path = self.publisher.topic_path(self.project_id, topic_id)
@@ -81,7 +82,7 @@ class PubSubManager:
 
     def get(self, request_id: str) -> str:
         with self.lock:
-            return self.cache.get(request_id)
+            return self.cache.get(request_id, '')
 
 
 def main():
