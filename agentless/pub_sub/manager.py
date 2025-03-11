@@ -1,6 +1,5 @@
 from concurrent import futures
 import uuid
-from typing import Any
 
 import os
 import threading
