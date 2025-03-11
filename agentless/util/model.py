@@ -388,9 +388,8 @@ class DeepSeekChatDecoder(DecoderBase):
         return False
 
 class PubSubChatDecoder(DecoderBase):
-    def __init__(self, name: str, logger, pub_sub_manager: PubSubManager, **kwargs) -> None:
+    def __init__(self, name: str, logger, **kwargs) -> None:
         super().__init__(name, logger, **kwargs)
-        self.pub_sub_manager = pub_sub_manager
         self.kernel_id = name
 
     def codegen(
@@ -410,7 +409,6 @@ class PubSubChatDecoder(DecoderBase):
             ret = request_pub_sub_engine(
                 config,
                 self.logger,
-                self.pub_sub_manager,
             )
 
             if ret:
@@ -448,7 +446,6 @@ def make_model(
     batch_size: int = 1,
     max_tokens: int = 1024,
     temperature: float = 0.0,
-    pub_sub_manager: PubSubManager | None = None,
 ):
     if backend == "openai":
         return OpenAIChatDecoder(
@@ -480,8 +477,7 @@ def make_model(
             logger=logger,
             batch_size=batch_size,
             max_new_tokens=max_tokens,
-            temperature=temperature,
-            pub_sub_manager=pub_sub_manager
+            temperature=temperature
         )
     else:
         raise NotImplementedError

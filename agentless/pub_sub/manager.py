@@ -85,28 +85,36 @@ class PubSubManager:
             return self.cache.get(request_id, '')
 
 
+    def evict(self, request_id: str) -> str:
+        with self.lock:
+            return self.cache.pop(request_id, None)
+
+
+# Public, reusable instance of the PubSubManager.
+PUB_SUB_MANAGER = PubSubManager()
+
+# Launch a a dameon thread to listen for responses and update the local cache.
+thread = threading.Thread(target=PUB_SUB_MANAGER.listen)
+thread.start()
+
 def main():
     # See https://cloud.google.com/docs/authentication/application-default-credentials#personal.
     # 1. Run gcloud auth application-default login
     # 2. Set the GOOGLE_APPLICATION_CREDENTIALS environment variable.
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"{os.path.expanduser('~')}/.config/gcloud/application_default_credentials.json"
 
-    pub_sub_manager = PubSubManager()
-
-    thread = threading.Thread(target=pub_sub_manager.listen)
-    thread.start()
-
-    request_id = pub_sub_manager.get_request_id()
+    request_id = PUB_SUB_MANAGER.get_request_id()
     data_str = "What is the meaning of life?"
     kernel_id = 'als:bard'
-    pub_sub_manager.publish(data_str, request_id, kernel_id)
+    PUB_SUB_MANAGER.publish(data_str, request_id, kernel_id)
 
     while True:
-        response = pub_sub_manager.get(request_id)
+        response = PUB_SUB_MANAGER.get(request_id)
         if response:
             break
 
-    response = pub_sub_manager.get(request_id)
+    response = PUB_SUB_MANAGER.get(request_id)
+    PUB_SUB_MANAGER.evict(request_id)
     print(response)
 
 if __name__ == "__main__":

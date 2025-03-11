@@ -1,6 +1,8 @@
 import time
 from typing import Any, Dict, Union
 
+from agentless.pub_sub.manager import PUB_SUB_MANAGER
+
 import anthropic
 import openai
 import tiktoken
@@ -175,7 +177,7 @@ def create_pub_sub_config(
 
 
 def request_pub_sub_engine(
-    config, logger, pub_sub_manager, max_retries=40, timeout=500, prompt_cache=False
+    config, logger, max_retries=40, timeout=500, prompt_cache=False
 ):
     ret = None
     retries = 0
@@ -184,9 +186,9 @@ def request_pub_sub_engine(
         try:
             start_time = time.time()
 
-            request_id = pub_sub_manager.get_request_id()
+            request_id = PUB_SUB_MANAGER.get_request_id()
 
-            pub_sub_manager.publish(
+            PUB_SUB_MANAGER.publish(
                 data_str=config["data_str"],
                 request_id=request_id,
                 kernel_id=config["kernel_id"],
@@ -194,7 +196,8 @@ def request_pub_sub_engine(
 
             ret = ''
             while not ret and (time.time() - start_time) <= timeout:
-                ret = pub_sub_manager.get(request_id)
+                ret = PUB_SUB_MANAGER.get(request_id)
+            PUB_SUB_MANAGER.evict(request_id)
 
         except Exception as e:
             logger.error("Unknown error. Waiting...", exc_info=True)

@@ -568,12 +568,10 @@ def main():
     parser.add_argument(
         "--mock", action="store_true", help="Mock run to compute prompt tokens."
     )
-
-    # Can correspond to a LaMDA CLI compatible --kernel_id.
     parser.add_argument(
         "--model",
         type=str,
-        default="als:bard",
+        default="gpt-4o-2024-05-13",
     )
     parser.add_argument(
         "--backend",
