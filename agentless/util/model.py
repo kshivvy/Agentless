@@ -390,20 +390,23 @@ class DeepSeekChatDecoder(DecoderBase):
 class PubSubChatDecoder(DecoderBase):
     def __init__(self, name: str, logger, **kwargs) -> None:
         super().__init__(name, logger, **kwargs)
-        self.kernel_id = name
 
     def codegen(
         self, message: str, num_samples: int = 1, prompt_cache: bool = False
     ) -> List[dict]:
         if self.temperature == 0:
             assert num_samples == 1
+        batch_size = min(self.batch_size, num_samples)
 
         trajs = []
         for _ in range(num_samples):
             # TODO(kshivvy): Apply the temperature, max_tokens, etc.
             config = create_pub_sub_config(
                 data_str=message,
-                kernel_id=self.kernel_id,
+                kernel_id=self.name,
+                max_tokens=self.max_new_tokens,
+                temperature=self.temperature,
+                batch_size=batch_size,
             )
 
             ret = request_pub_sub_engine(

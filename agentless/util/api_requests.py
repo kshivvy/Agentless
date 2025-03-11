@@ -168,11 +168,20 @@ def request_anthropic_engine(
 
 def create_pub_sub_config(
     data_str: str,
-    kernel_id: str = "als:bard",
+    kernel_id: str,
+    max_tokens: int,
+    temperature: float = 1,
+    batch_size: int = 1,
+    system_message: str = "You are a helpful assistant.",
 ) -> Dict[str, Any]:
     return {
         "data_str": data_str,
         "kernel_id": kernel_id,
+        "max_decoding_steps": str(max_tokens),
+        "temperature": str(temperature),
+        # TODO(kshivvy): Find good mapping for batch_size and system_message.
+        "batch_size": str(batch_size),
+        "system_message": system_message,
     }
 
 
@@ -189,17 +198,19 @@ def request_pub_sub_engine(
             request_id = PUB_SUB_MANAGER.get_request_id()
 
             PUB_SUB_MANAGER.publish(
-                data_str=config["data_str"],
+                data_str=config.pop("data_str", ""),
                 request_id=request_id,
-                kernel_id=config["kernel_id"],
+                attributes=config,
             )
 
-            ret = ''
             while not ret and (time.time() - start_time) <= timeout:
                 ret = PUB_SUB_MANAGER.get(request_id)
             PUB_SUB_MANAGER.evict(request_id)
+            print("Model response:")
+            print(ret)
 
         except Exception as e:
+            print(e)
             logger.error("Unknown error. Waiting...", exc_info=True)
             if time.time() - start_time >= timeout:
                 logger.warning("Request timed out. Retrying...")

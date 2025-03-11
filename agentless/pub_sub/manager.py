@@ -1,6 +1,6 @@
 from concurrent import futures
 import uuid
-import json
+from typing import Any
 
 import os
 import threading
@@ -37,16 +37,13 @@ class PubSubManager:
         with self.lock:
             return str(uuid.uuid1())
 
-    def publish(self, data_str: str, request_id: str, kernel_id: str | None = None, topic_id: str = _REQUEST_TOPIC_ID) -> str:
+    def publish(self, data_str: str, request_id: str, attributes: dict[str, str],  topic_id: str = _REQUEST_TOPIC_ID,) -> str:
         topic_path = self.publisher.topic_path(self.project_id, topic_id)
-
-        if not kernel_id:
-            kernel_id = self.get_request()
 
         data = data_str.encode("utf-8")
 
         # When you publish a message, the client returns a future.
-        future = self.publisher.publish(topic_path, data, request_id=request_id, kernel_id=kernel_id)
+        future = self.publisher.publish(topic_path, data, request_id=request_id, **attributes)
         return future.result()
 
 
@@ -105,8 +102,12 @@ def main():
 
     request_id = PUB_SUB_MANAGER.get_request_id()
     data_str = "What is the meaning of life?"
-    kernel_id = 'als:bard'
-    PUB_SUB_MANAGER.publish(data_str, request_id, kernel_id)
+    attributes = {
+        "kernel_id": "als:bard",
+        "max_decoding_steps": "50",
+        "temperature": "0.8",
+    }
+    PUB_SUB_MANAGER.publish(data_str, request_id, attributes)
 
     while True:
         response = PUB_SUB_MANAGER.get(request_id)
