@@ -7,3 +7,4 @@ libcst
 llama-index
 jsonlines
 swebench @ git+https://github.com/princeton-nlp/SWE-bench
+google-cloud-pubsub
