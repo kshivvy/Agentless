@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-import threading
 from agentless.repair.repair import construct_topn_file_context
 from agentless.util.compress_file import get_skeleton
 from agentless.util.postprocess_data import extract_code_blocks, extract_locs_for_files
