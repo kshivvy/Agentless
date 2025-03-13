@@ -28,6 +28,7 @@ from agentless.util.preprocess_data import (
     transfer_arb_locs_to_locs,
 )
 from agentless.util.utils import cleanup_logger, load_jsonl, setup_logger
+from agentless.pub_sub import manager
 
 repair_relevant_file_instruction = """
 Below are some code segments, each from a relevant file. One or more of these files may contain bugs.
@@ -785,6 +786,8 @@ def main():
         default="princeton-nlp/SWE-bench_Lite",
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
     )
+    parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
+    parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 
     args = parser.parse_args()
 
@@ -809,6 +812,10 @@ def main():
 
     args.output_file = os.path.join(args.output_folder, "output.jsonl")
 
+    manager.PUB_SUB_MANAGER.topic_id = args.topic_id
+    manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
+    manager.PUB_SUB_MANAGER.start_listening()
+
     if args.post_process:
         args.raw_output_file = args.output_file
         if args.select_id == -1:
@@ -832,6 +839,7 @@ def main():
     else:
         repair(args)
 
+    manager.PUB_SUB_MANAGER.stop_listening()
 
 if __name__ == "__main__":
     main()

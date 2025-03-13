@@ -171,17 +171,14 @@ def create_pub_sub_config(
     kernel_id: str,
     max_tokens: int,
     temperature: float = 1,
-    batch_size: int = 1,
-    system_message: str = "You are a helpful assistant.",
 ) -> Dict[str, Any]:
     return {
         "data_str": data_str,
         "kernel_id": kernel_id,
         "max_decoding_steps": str(max_tokens),
         "temperature": str(temperature),
-        # TODO(kshivvy): Find good mapping for batch_size and system_message.
-        "batch_size": str(batch_size),
-        "system_message": system_message,
+        "top_p": "0.95",
+        "top_k": "64",
     }
 
 

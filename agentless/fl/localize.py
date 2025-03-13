@@ -15,6 +15,7 @@ from agentless.util.preprocess_data import (
     get_repo_structure,
 )
 from agentless.util.utils import load_existing_instance_ids, load_jsonl, setup_logger
+from agentless.pub_sub import manager
 
 MAX_RETRIES = 5
 
@@ -586,10 +587,16 @@ def main():
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
         help="Current supported dataset for evaluation",
     )
+    parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
+    parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 
     args = parser.parse_args()
     args.output_file = os.path.join(args.output_folder, args.output_file)
     check_valid_args(args)
+
+    manager.PUB_SUB_MANAGER.topic_id = args.topic_id
+    manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
+    manager.PUB_SUB_MANAGER.start_listening()
 
     os.makedirs(os.path.join(args.output_folder, "localization_logs"), exist_ok=True)
     os.makedirs(args.output_folder, exist_ok=True)
@@ -605,6 +612,7 @@ def main():
     else:
         localize(args)
 
+    manager.PUB_SUB_MANAGER.stop_listening()
 
 if __name__ == "__main__":
     main()

@@ -6,6 +6,7 @@ from collections import Counter
 from tqdm import tqdm
 
 from agentless.util.utils import load_jsonl
+from agentless.pub_sub import manager
 
 
 def combine_file_level(args):
@@ -63,8 +64,14 @@ def main():
     parser.add_argument("--model_loc_file", type=str, required=True)
     # supports file level (step-1) combination
     parser.add_argument("--top_n", type=int, required=True)
+    parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
+    parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 
     args = parser.parse_args()
+
+    manager.PUB_SUB_MANAGER.topic_id = args.topic_id
+    manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
+    manager.PUB_SUB_MANAGER.start_listening()
 
     args.output_file = os.path.join(args.output_folder, args.output_file)
     assert not os.path.exists(args.output_file), "Output file already exists"
@@ -77,6 +84,7 @@ def main():
 
     combine_file_level(args)
 
+    manager.PUB_SUB_MANAGER.stop_listening()
 
 if __name__ == "__main__":
     main()

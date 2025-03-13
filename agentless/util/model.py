@@ -406,7 +406,6 @@ class PubSubChatDecoder(DecoderBase):
                 kernel_id=self.name,
                 max_tokens=self.max_new_tokens,
                 temperature=self.temperature,
-                batch_size=batch_size,
             )
 
             ret = request_pub_sub_engine(

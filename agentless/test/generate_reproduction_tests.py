@@ -14,6 +14,7 @@ from agentless.util.api_requests import num_tokens_from_messages
 from agentless.util.model import make_model
 from agentless.util.postprocess_data import remove_comments_and_docstrings
 from agentless.util.utils import load_jsonl, setup_logger
+from agentless.pub_sub import manager
 
 generate_tests_prompt_template = """
 We are currently solving the following issue within our repository. Here is the issue text:
@@ -528,6 +529,8 @@ def main():
         default="princeton-nlp/SWE-bench_Lite",
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
     )
+    parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
+    parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 
     args = parser.parse_args()
 
@@ -539,6 +542,10 @@ def main():
         os.makedirs(args.output_folder)
     if not os.path.exists(os.path.join(args.output_folder, "generating_test_logs")):
         os.makedirs(os.path.join(args.output_folder, "generating_test_logs"))
+
+    manager.PUB_SUB_MANAGER.topic_id = args.topic_id
+    manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
+    manager.PUB_SUB_MANAGER.start_listening()
 
     if not args.select:
         args.output_file = os.path.join(args.output_folder, "output.jsonl")
@@ -554,6 +561,7 @@ def main():
         normalize_tests(args)
         test_selection(args)
 
+    manager.PUB_SUB_MANAGER.stop_listening()
 
 if __name__ == "__main__":
     main()
