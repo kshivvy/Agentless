@@ -64,13 +64,16 @@ run_step() {
 
 # Set up environment
 log_progress "Setting up environment..."
-# export PATH="$HOME/miniconda3/bin:$PATH"
-# source "$HOME/miniconda3/etc/profile.d/conda.sh"
-source /opt/conda/etc/profile.d/conda.sh
+export PATH="/home/timothychung_google_com/miniforge3/condabin:$PATH"
+source "/home/timothychung_google_com/miniforge3/etc/profile.d/conda.sh"
 conda activate agentless
 
 # Set PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$(pwd)
+
+# Use local repository structures instead of cloning from GitHub
+export PROJECT_FILE_LOC="$(pwd)/repo_cache/repo_structures"
+log_progress "Using local repository structures from $PROJECT_FILE_LOC"
 
 # Set the Google API key (already hardcoded in api_requests.py)
 export GOOGLE_API_KEY="AIzaSyBWcPVvWoR9pUOFzeRgsuW2tG-U-ZPiSbU"
