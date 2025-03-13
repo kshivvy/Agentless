@@ -64,8 +64,9 @@ run_step() {
 
 # Set up environment
 log_progress "Setting up environment..."
-export PATH="/home/timothychung_google_com/miniforge3/condabin:$PATH"
-source "/home/timothychung_google_com/miniforge3/etc/profile.d/conda.sh"
+# export PATH="/home/timothychung_google_com/miniforge3/condabin:$PATH"
+# source "/home/timothychung_google_com/miniforge3/etc/profile.d/conda.sh"
+source /opt/conda/etc/profile.d/conda.sh
 conda activate agentless
 
 # Set PYTHONPATH
