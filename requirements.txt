@@ -5,3 +5,5 @@ tiktoken
 swebench
 libcst
 google-cloud-pubsub
+google-cloud-storage
+tqdm

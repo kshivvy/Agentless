@@ -109,3 +109,9 @@ python agentless/repair/rerank.py \
     --num_samples=$REPAIR_SAMPLES \
     --deduplicate \
     --plausible
+
+run_step 4 "Uploading results to Google Cloud Storage" \
+python agentless/gcs/upload_results.py \
+--source_dir results \
+--dest_dir $DEST_DIR \
+--num_workers $PARALLELISM
