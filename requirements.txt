@@ -7,4 +7,7 @@ libcst
 llama-index
 jsonlines
 swebench @ git+https://github.com/princeton-nlp/SWE-bench
+
+# Required GCP libraries.
 google-cloud-pubsub
+google-cloud-storage
