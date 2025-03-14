@@ -37,7 +37,7 @@ RUN mkdir -p /app/data && \
 RUN curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
     unzip /app/data/swebench_lite_repo_structure.zip -d /app/data
 
-ENV PROJECT_FILE_LOC=/app/data/swebench_lite_repo_structure/repo_structure
+ENV PROJECT_FILE_LOC=/app/data/repo_structure
 
 # Set the default command to run the shell script inside the Conda environment
 CMD ["bash", "/app/run.sh"]
