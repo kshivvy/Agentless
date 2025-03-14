@@ -1,18 +1,17 @@
+import asyncio
 import argparse
-import copy
 import json
 import logging
 import os
 from difflib import unified_diff
 
 from datasets import load_dataset
-from tqdm import tqdm
+from tqdm.asyncio import tqdm
 
-from agentless.util.api_requests import (
-    create_chatgpt_config,
-    num_tokens_from_messages,
-    request_chatgpt_engine,
-)
+from agentless import data_types
+from agentless.util import models
+from agentless.util import tqdm_utils
+from agentless.pub_sub import manager
 from agentless.util.postprocess_data import (
     check_code_differ_by_just_empty_lines,
     check_syntax,
@@ -21,7 +20,6 @@ from agentless.util.postprocess_data import (
     lint_code,
     parse_diff_edit_commands,
     parse_edit_commands,
-    remove_empty_lines,
     split_edit_multifile_commands,
 )
 from agentless.util.preprocess_data import (
@@ -242,7 +240,7 @@ def construct_topn_file_context(
     return topn_content, file_loc_intervals
 
 
-def repair(args):
+async def repair(args, model: models.DecoderBase):
     logging.basicConfig(
         filename=f"{args.output_folder}/repair.log",
         level=logging.DEBUG,
@@ -267,7 +265,7 @@ def repair(args):
         for loc in locs:
             f.write(json.dumps(loc) + "\n")
 
-    for loc in tqdm(locs):
+    async def handle_loc(loc: data_types.Localization):
         instance_id = loc["instance_id"]
         found = False
         for o in prev_o:
@@ -277,7 +275,7 @@ def repair(args):
 
         if found:
             logging.info(f"skipping {instance_id} since patch already generated")
-            continue
+            return
 
         logging.info(f"================ repairing {instance_id} ================")
 
@@ -299,7 +297,7 @@ def repair(args):
                 )
 
             logging.info(f"skipped since no files were localized")
-            continue
+            return
 
         pred_files = loc["found_files"][: args.top_n]
 
@@ -374,7 +372,7 @@ def repair(args):
                 )
 
             logging.info(f"skipped since no files were localized")
-            continue
+            return
 
         # Construct prompt.
         # Note that we assume there's no feedback, and we always use the same prompt in each turn.
@@ -395,100 +393,33 @@ def repair(args):
 
         logging.info(f"prompting with message:\n{message}")
 
-        sample_responses = None
+        async def sample_greedy(message: str):
+            ts = await model.codegen_async(
+                message,
+                max_new_tokens=1024,
+                temperature=0,
+            )
+            return ts[0]
 
-        def get_response(count):
-            nonlocal sample_responses
-            if count == 0:
-                if args.skip_greedy:
-                    return {
-                        "response": "",
-                        "usage": {
-                            "completion_tokens": 0,
-                            "prompt_tokens": 0,
-                        },
-                    }
-                if args.mock:
-                    return {
-                        "response": "",
-                        "usage": {
-                            "prompt_tokens": num_tokens_from_messages(
-                                message, "gpt-4o-2024-05-13"
-                            ),
-                        },
-                    }
-                config = create_chatgpt_config(
-                    message=message,
-                    max_tokens=1024,
-                    temperature=0,  # greedy first
-                    batch_size=1,
-                    model=args.model,  # use gpt-4o for now.
-                )
-
-                greedy_response = request_chatgpt_engine(config)
-                return {
-                    "response": greedy_response.choices[0].message.content,
-                    "usage": {
-                        "completion_tokens": greedy_response.usage.completion_tokens,
-                        "prompt_tokens": greedy_response.usage.prompt_tokens,
-                    },
-                }
-            elif args.stop_at_n_unique_valid_samples == -1:
-                # No early-stopping, let's get all samples at a time
-                assert args.max_samples > 1
-                if args.mock:
-                    return {
-                        "response": "",
-                        "usage": {
-                            "prompt_tokens": num_tokens_from_messages(
-                                message, "gpt-4o-2024-05-13"
-                            )
-                            if count == 1
-                            else 0,
-                        },
-                    }
-                if sample_responses is not None:
-                    # Directly return earlier samples
-                    return {
-                        "response": sample_responses.choices[count - 1].message.content,
-                        "usage": {
-                            "completion_tokens": 0,
-                            "prompt_tokens": 0,
-                        },
-                    }
-                assert count == 1
-                config = create_chatgpt_config(
-                    message=message,
-                    max_tokens=1024,
-                    temperature=0.8,
-                    batch_size=args.max_samples - 1,  # minus the 1 greedy sample
-                    model=args.model,  # use gpt-4o for now.
-                )
-
-                sample_responses = request_chatgpt_engine(config)
-                return {
-                    "response": sample_responses.choices[count - 1].message.content,
-                    "usage": {
-                        "completion_tokens": sample_responses.usage.completion_tokens,
-                        "prompt_tokens": sample_responses.usage.prompt_tokens,
-                    },
-                }
-
-        count = 0
-        while count < args.max_samples:
-            print(f"trying the {count + 1}-th sample ...")
-            ret = get_response(count)
-            count += 1
-            traj.append(
-                {
-                    **ret,
-                    "prompt": message,
-                }
+        async def sample_n(message: str, num_samples: int):
+            return await model.codegen_async(
+                message,
+                num_samples=num_samples,
+                max_new_tokens=1024,
+                temperature=0.8,
             )
 
-            if args.mock:
-                continue
-            raw_output = ret["response"]
+        if args.mock:
+            ts = [data_types.DUMMY_TRAJ for _ in range(args.max_samples)]
+        else:
+            ts = [
+                await sample_greedy(message),
+                *(await sample_n(message, args.max_samples - 1)),
+            ]
+        for t in ts:
+            t["prompt"] = message
+            traj.append(t)
+            raw_output = t["response"]
             logging.info(f"raw output:\n{raw_output}")
             all_generations.append(raw_output)
 
@@ -498,15 +429,16 @@ def repair(args):
                 file_loc_intervals,
                 diff_format=args.diff_format,
             )
-            prev_content = file_contents[edited_file]
-            prev_contents.append(prev_content)
+            if edited_file in file_contents:
+                prev_content = file_contents[edited_file]
+                prev_contents.append(prev_content)
 
-            file_names.append(edited_file)
+                file_names.append(edited_file)
 
             if new_content == "":
                 continue
 
-        counts.append(count)
+        counts.append(args.max_samples)
         raw_outputs.append(raw_output)
         all_generations = [all_generations]
         prev_contents = [prev_contents]
@@ -528,6 +460,11 @@ def repair(args):
                 + "\n"
             )
 
+    async for _ in tqdm_utils.as_completed(
+        [handle_loc(loc) for loc in locs], total=len(locs)
+    ):
+        pass
+
 
 def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, args):
     git_diffs = ""
@@ -547,7 +484,7 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
             git_diff = fake_git_repo("playground", edited_file, content, new_content)
 
             raw_git_diffs += "\n" + git_diff.replace(
-                "\ No newline at end of file\n", ""
+                r"\ No newline at end of file\n", ""
             )
 
             syntax_success = check_syntax(new_content)
@@ -681,7 +618,7 @@ def post_process_repair(args):
             )
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--loc_file", type=str, required=True)
     parser.add_argument("--top_n", type=int, default=1)
@@ -701,9 +638,7 @@ def main():
         default=-1,
         help="Index the selected samples during post-processing.",
     )
-    parser.add_argument(
-        "--model", type=str, default="gpt-4o-2024-05-13", choices=["gpt-4o-2024-05-13"]
-    )
+    parser.add_argument("--model", type=str, default="gpt-4o-2024-05-13")
     parser.add_argument("--output_folder", type=str, required=True)
     parser.add_argument(
         "--only_correct", action="store_true"
@@ -718,6 +653,12 @@ def main():
     parser.add_argument(
         "--mock", action="store_true", help="Mock run to compute prompt tokens."
     )
+    parser.add_argument("--parallelism", type=int, default=16)
+    parser.add_argument("--kernel_id", type=str, default=None)
+    parser.add_argument("--topic_id", type=str, default=manager.DEFAULT_TOPIC_ID)
+    parser.add_argument(
+        "--subscription_id", type=str, default=manager.DEFAULT_SUBSCRIPTION_ID
+    )
 
     args = parser.parse_args()
 
@@ -726,29 +667,36 @@ def main():
 
     args.output_file = os.path.join(args.output_folder, "output.jsonl")
 
-    if args.post_process:
-        args.raw_output_file = args.output_file
-        if args.select_id == -1:
-            args.output_file = args.raw_output_file.replace(
-                ".jsonl", "_processed.jsonl"
-            )
-        else:
-            args.output_file = args.raw_output_file.replace(
-                ".jsonl", f"_{args.select_id}_processed.jsonl"
-            )
-        post_process_repair(args)
-    elif args.gen_and_process:
-        repair(args)
-        args.raw_output_file = args.output_file
-        for i in range(args.max_samples):
-            args.output_file = args.raw_output_file.replace(
-                ".jsonl", f"_{i}_processed.jsonl"
-            )
-            args.select_id = i
+    async with manager.PubSubManager(
+        topic_id=args.topic_id,
+        subscription_id=args.subscription_id,
+        max_concurrent_request=args.parallelism,
+    ) as pub_sub_mgr:
+        model = models.PubSubDecoder(name=args.model, pub_sub_mgr=pub_sub_mgr)
+
+        if args.post_process:
+            args.raw_output_file = args.output_file
+            if args.select_id == -1:
+                args.output_file = args.raw_output_file.replace(
+                    ".jsonl", "_processed.jsonl"
+                )
+            else:
+                args.output_file = args.raw_output_file.replace(
+                    ".jsonl", f"_{args.select_id}_processed.jsonl"
+                )
             post_process_repair(args)
-    else:
-        repair(args)
+        elif args.gen_and_process:
+            await repair(args, model)
+            args.raw_output_file = args.output_file
+            for i in range(args.max_samples):
+                args.output_file = args.raw_output_file.replace(
+                    ".jsonl", f"_{i}_processed.jsonl"
+                )
+                args.select_id = i
+                post_process_repair(args)
+        else:
+            await repair(args, model)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

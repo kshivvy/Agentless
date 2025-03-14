@@ -1,12 +1,19 @@
+import asyncio
 import argparse
 import json
 import logging
 import os
+import dataclasses
+from collections.abc import Iterable
+from concurrent import futures
+from typing import Any
 
 from datasets import load_dataset
-from tqdm import tqdm
 
+from agentless import data_types
 from agentless.fl.FL import LLMFL
+from agentless.util import models
+from agentless.util import tqdm_utils
 from agentless.util.preprocess_data import (
     filter_none_python,
     filter_out_test_files,
@@ -14,6 +21,7 @@ from agentless.util.preprocess_data import (
     show_project_structure,
 )
 from agentless.util.utils import load_json, load_jsonl
+from agentless.pub_sub import manager
 from get_repo_structure.get_repo_structure import (
     clone_repo,
     get_project_structure_from_scratch,
@@ -23,39 +31,57 @@ from get_repo_structure.get_repo_structure import (
 PROJECT_FILE_LOC = os.environ.get("PROJECT_FILE_LOC", None)
 
 
-def localize(args):
+@dataclasses.dataclass
+class Args:
+    output_folder: str
+    output_file: str = "loc_outputs.jsonl"
+    start_file: str | None = None
+    file_level: bool = False
+    related_level: bool = False
+    fine_grain_line_level: bool = False
+    top_n: int = 3
+    temperature: float = 0.0
+    num_samples: int = 1
+    compress: bool = False
+    merge: bool = False
+    add_space: bool = False
+    no_line_number: bool = False
+    sticky_scroll: bool = False
+    context_window: int = 10
+    target_id: str | None = None
+    mock: bool = False
+    parallelism: int | None = None
+    model: str | None = None
+    topic_id: str = manager.DEFAULT_TOPIC_ID
+    subscription_id: str = manager.DEFAULT_SUBSCRIPTION_ID
 
-    swe_bench_data = load_dataset("princeton-nlp/SWE-bench_Lite", split="test")
 
-    if args.start_file:
-        start_file_locs = load_jsonl(args.start_file)
+def get_repo_structure(instance_id: str) -> dict[str, Any]:
+    assert PROJECT_FILE_LOC is not None, "PROJECT_FILE_LOC env var not set."
+    project_file = os.path.join(PROJECT_FILE_LOC, instance_id + ".json")
+    return load_json(project_file)["structure"]
 
-    for bug in swe_bench_data:
 
-        if args.target_id is not None:
-            if args.target_id != bug["instance_id"]:
-                continue
+async def localize(args: Args, model: models.DecoderBase):
+    async def localize_instance(
+        bug: data_types.Bug,
+        args: Args,
+        swe_bench_data: list[data_types.Bug],
+        start_file_locs: Any,
+        model: models.DecoderBase,
+        executor: futures.ThreadPoolExecutor,
+    ) -> data_types.Localization:
+        instance_id = bug["instance_id"]
+        structure = get_repo_structure(instance_id)
 
-        if PROJECT_FILE_LOC is not None:
-            project_file = os.path.join(PROJECT_FILE_LOC, bug["instance_id"] + ".json")
-            d = load_json(project_file)
-        else:
-            # we need to get the project structure directly
-            d = get_project_structure_from_scratch(
-                bug["repo"], bug["base_commit"], bug["instance_id"], "playground"
-            )
-
-        instance_id = d["instance_id"]
-
-        logging.info(f"================ localize {instance_id} ================")
+        # logging.info(f"================ localize {instance_id} ================")
 
         bench_data = [x for x in swe_bench_data if x["instance_id"] == instance_id][0]
         problem_statement = bench_data["problem_statement"]
-        structure = d["structure"]
         filter_none_python(structure)
         # some basic filtering steps
         # filter out test files (unless its pytest)
-        if not d["instance_id"].startswith("pytest"):
+        if not instance_id.startswith("pytest"):
             filter_out_test_files(structure)
 
         found_files = []
@@ -70,17 +96,18 @@ def localize(args):
         # file level localization
         if args.file_level:
             fl = LLMFL(
-                d["instance_id"],
+                instance_id,
                 structure,
                 problem_statement,
+                model,
             )
-            found_files, additional_artifact_loc_file, file_traj = fl.localize(
+            found_files, additional_artifact_loc_file, file_traj = await fl.localize(
                 mock=args.mock
             )
         else:
             # assume start_file is provided
             for locs in start_file_locs:
-                if locs["instance_id"] == d["instance_id"]:
+                if locs["instance_id"] == instance_id:
                     found_files = locs["found_files"]
                     additional_artifact_loc_file = locs["additional_artifact_loc_file"]
                     file_traj = locs["file_traj"]
@@ -98,9 +125,10 @@ def localize(args):
             if len(found_files) != 0:
                 pred_files = found_files[: args.top_n]
                 fl = LLMFL(
-                    d["instance_id"],
+                    instance_id,
                     structure,
                     problem_statement,
+                    model,
                 )
 
                 additional_artifact_loc_related = []
@@ -112,9 +140,8 @@ def localize(args):
                         found_related_locs,
                         additional_artifact_loc_related,
                         related_loc_traj,
-                    ) = fl.localize_function_from_compressed_files(
-                        pred_files,
-                        mock=args.mock,
+                    ) = await fl.localize_function_from_compressed_files(
+                        file_names=pred_files, mock=args.mock, executor=executor
                     )
                     additional_artifact_loc_related = [additional_artifact_loc_related]
                 else:
@@ -128,6 +155,7 @@ def localize(args):
                 instance_id,
                 structure,
                 problem_statement,
+                model,
             )
             coarse_found_locs = {}
             for i, pred_file in enumerate(pred_files):
@@ -137,9 +165,9 @@ def localize(args):
                 found_edit_locs,
                 additional_artifact_loc_edit_location,
                 edit_loc_traj,
-            ) = fl.localize_line_from_coarse_function_locs(
-                pred_files,
-                coarse_found_locs,
+            ) = await fl.localize_line_from_coarse_function_locs(
+                file_names=pred_files,
+                coarse_locs=coarse_found_locs,
                 context_window=args.context_window,
                 add_space=args.add_space,
                 no_line_number=args.no_line_number,
@@ -147,30 +175,45 @@ def localize(args):
                 mock=args.mock,
                 temperature=args.temperature,
                 num_samples=args.num_samples,
+                executor=executor,
             )
 
             additional_artifact_loc_edit_location = [
                 additional_artifact_loc_edit_location
             ]
 
-        with open(args.output_file, "a") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "instance_id": d["instance_id"],
-                        "found_files": found_files,
-                        "additional_artifact_loc_file": additional_artifact_loc_file,
-                        "file_traj": file_traj,
-                        "found_related_locs": found_related_locs,
-                        "additional_artifact_loc_related": additional_artifact_loc_related,
-                        "related_loc_traj": related_loc_traj,
-                        "found_edit_locs": found_edit_locs,
-                        "additional_artifact_loc_edit_location": additional_artifact_loc_edit_location,
-                        "edit_loc_traj": edit_loc_traj,
-                    }
-                )
-                + "\n"
+        return {
+            "instance_id": instance_id,
+            "found_files": found_files,
+            "additional_artifact_loc_file": additional_artifact_loc_file,
+            "file_traj": file_traj,
+            "found_related_locs": found_related_locs,
+            "additional_artifact_loc_related": additional_artifact_loc_related,
+            "related_loc_traj": related_loc_traj,
+            "found_edit_locs": found_edit_locs,
+            "additional_artifact_loc_edit_location": additional_artifact_loc_edit_location,
+            "edit_loc_traj": edit_loc_traj,
+        }
+
+    swe_bench_data: Iterable[data_types.Bug] = load_dataset(
+        "princeton-nlp/SWE-bench_Lite", split="test"
+    )
+    start_file_locs = load_jsonl(args.start_file) if args.start_file else None
+    with futures.ThreadPoolExecutor(max_workers=args.parallelism) as executor:
+        locs = [
+            localize_instance(
+                bug=bug,
+                args=args,
+                swe_bench_data=swe_bench_data,
+                start_file_locs=start_file_locs,
+                model=model,
+                executor=executor,
             )
+            for bug in swe_bench_data
+        ]
+        async for loc in tqdm_utils.as_completed(locs, total=len(locs)):
+            with open(args.output_file, "a") as f:
+                f.write(json.dumps(loc) + "\n")
 
 
 def merge(args):
@@ -230,7 +273,7 @@ def merge(args):
             f.write(json.dumps(data) + "\n")
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--output_folder", type=str, required=True)
@@ -256,6 +299,12 @@ def main():
     parser.add_argument("--target_id", type=str)
     parser.add_argument(
         "--mock", action="store_true", help="Mock run to compute prompt tokens."
+    )
+    parser.add_argument("--parallelism", type=int, default=16)
+    parser.add_argument("--model", type=str, default=None)
+    parser.add_argument("--topic_id", type=str, default=manager.DEFAULT_TOPIC_ID)
+    parser.add_argument(
+        "--subscription_id", type=str, default=manager.DEFAULT_SUBSCRIPTION_ID
     )
 
     args = parser.parse_args()
@@ -289,11 +338,18 @@ def main():
         level=logging.DEBUG,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    if args.merge:
-        merge(args)
-    else:
-        localize(args)
+    async with manager.PubSubManager(
+        topic_id=args.topic_id,
+        subscription_id=args.subscription_id,
+        max_concurrent_request=args.parallelism,
+    ) as pub_sub_mgr:
+        model = models.PubSubDecoder(name=args.model, pub_sub_mgr=pub_sub_mgr)
+
+        if args.merge:
+            merge(args)
+        else:
+            await localize(args, model)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main(), debug=True)

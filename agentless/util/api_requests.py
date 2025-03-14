@@ -2,24 +2,21 @@ import signal
 import time
 from typing import Dict, Union
 
-import openai
-import tiktoken
-
-client = openai.OpenAI()
+# import tiktoken
 
 
 def num_tokens_from_messages(message, model="gpt-3.5-turbo-0301"):
     """Returns the number of tokens used by a list of messages."""
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        encoding = tiktoken.get_encoding("cl100k_base")
-    if isinstance(message, list):
-        # use last message.
-        num_tokens = len(encoding.encode(message[0]["content"]))
-    else:
-        num_tokens = len(encoding.encode(message))
-    return num_tokens
+    # try:
+    #     encoding = tiktoken.encoding_for_model(model)
+    # except KeyError:
+    #     encoding = tiktoken.get_encoding("cl100k_base")
+    # if isinstance(message, list):
+    #     # use last message.
+    #     num_tokens = len(encoding.encode(message[0]["content"]))
+    # else:
+    #     num_tokens = len(encoding.encode(message))
+    return 0
 
 
 def create_chatgpt_config(
@@ -58,6 +55,9 @@ def handler(signum, frame):
 
 
 def request_chatgpt_engine(config):
+    import openai
+
+    client = openai.OpenAI()
     ret = None
     while ret is None:
         try:

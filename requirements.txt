@@ -4,3 +4,4 @@ datasets
 tiktoken
 swebench
 libcst
+google-cloud-pubsub

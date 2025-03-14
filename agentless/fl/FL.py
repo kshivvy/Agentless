@@ -1,8 +1,12 @@
+import asyncio
+from concurrent import futures
+import functools
 import logging
 from abc import ABC, abstractmethod
 
 from agentless.repair.repair import construct_topn_file_context
 from agentless.util.compress_file import get_skeleton
+from agentless.util import models
 from agentless.util.postprocess_data import extract_code_blocks, extract_locs_for_files
 from agentless.util.preprocess_data import (
     get_full_file_paths_and_classes_and_functions,
@@ -211,14 +215,22 @@ class: MyClass5
 Return just the locations.
 """
 
-    def __init__(self, instance_id, structure, problem_statement, **kwargs):
+    def __init__(
+        self,
+        instance_id,
+        structure,
+        problem_statement,
+        model: models.DecoderBase,
+        **kwargs,
+    ):
         super().__init__(instance_id, structure, problem_statement)
         self.max_tokens = 300
+        self._model = model
 
     def _parse_model_return_lines(self, content: str) -> list[str]:
         return content.strip().split("\n")
 
-    def localize(self, top_n=1, mock=False) -> tuple[list, list, list, any]:
+    async def localize(self, top_n=1, mock=False) -> tuple[list, list, list, any]:
 
         found_files = []
 
@@ -233,8 +245,6 @@ Return just the locations.
             problem_statement=self.problem_statement,
             structure=show_project_structure(self.structure).strip(),
         ).strip()
-        print(f"prompting with message:\n{message}")
-        print("=" * 80)
         if mock:
             traj = {
                 "prompt": message,
@@ -246,23 +256,10 @@ Return just the locations.
             }
             return [], {"raw_output_loc": ""}, traj
 
-        config = create_chatgpt_config(
-            message=message,
-            max_tokens=self.max_tokens,
-            temperature=0,
-            batch_size=1,
-            model="gpt-4o-2024-05-13",  # use gpt-4o for now.
-        )
-        ret = request_chatgpt_engine(config)
-        raw_output = ret.choices[0].message.content
-        traj = {
-            "prompt": message,
-            "response": raw_output,
-            "usage": {
-                "prompt_tokens": ret.usage.prompt_tokens,
-                "completion_tokens": ret.usage.completion_tokens,
-            },
-        }
+        trajs = await self._model.codegen_async(message)
+        traj = trajs[0]
+        traj["prompt"] = message
+        raw_output = traj["response"]
         model_found_files = self._parse_model_return_lines(raw_output)
 
         files, classes, functions = get_full_file_paths_and_classes_and_functions(
@@ -277,15 +274,13 @@ Return just the locations.
         # sort based on order of appearance in model_found_files
         found_files = sorted(found_files, key=lambda x: model_found_files.index(x))
 
-        print(raw_output)
-
         return (
             found_files,
             {"raw_output_files": raw_output},
             traj,
         )
 
-    def localize_function_for_files(
+    async def localize_function_for_files(
         self, file_names, mock=False
     ) -> tuple[list, dict, dict]:
         from agentless.util.api_requests import (
@@ -326,8 +321,6 @@ Return just the locations.
             problem_statement=self.problem_statement,
             file_contents=file_contents,
         ).strip()
-        print(f"prompting with message:\n{message}")
-        print("=" * 80)
         if mock:
             traj = {
                 "prompt": message,
@@ -339,43 +332,41 @@ Return just the locations.
             }
             return [], {"raw_output_loc": ""}, traj
 
-        config = create_chatgpt_config(
-            message=message,
-            max_tokens=self.max_tokens,
+        trajs = await self._model.codegen_async(
+            message,
             temperature=0,
-            batch_size=1,
-            model="gpt-4o-2024-05-13",  # use gpt-4o for now.
         )
-        ret = request_chatgpt_engine(config)
-        raw_output = ret.choices[0].message.content
-        traj = {
-            "prompt": message,
-            "response": raw_output,
-            "usage": {
-                "prompt_tokens": ret.usage.prompt_tokens,
-                "completion_tokens": ret.usage.completion_tokens,
-            },
-        }
+        traj = trajs[0]
+        traj["prompt"] = message
+        raw_output = traj["response"]
 
         model_found_locs = extract_code_blocks(raw_output)
         model_found_locs_separated = extract_locs_for_files(
             model_found_locs, file_names
         )
 
-        print(raw_output)
-
         return model_found_locs_separated, {"raw_output_loc": raw_output}, traj
 
-    def localize_function_from_compressed_files(self, file_names, mock=False):
+    async def localize_function_from_compressed_files(
+        self, *, file_names, mock=False, executor: futures.ThreadPoolExecutor
+    ):
         from agentless.util.api_requests import (
             create_chatgpt_config,
             num_tokens_from_messages,
             request_chatgpt_engine,
         )
 
+        async def get_skeleton_async(code):
+            await asyncio.get_running_loop().run_in_executor(
+                executor, get_skeleton, code
+            )
+
         file_contents = get_repo_files(self.structure, file_names)
+        skeletons = await asyncio.gather(
+            *[get_skeleton_async(code) for code in file_contents.values()]
+        )
         compressed_file_contents = {
-            fn: get_skeleton(code) for fn, code in file_contents.items()
+            fn: skeleton for fn, skeleton in zip(file_contents, skeletons)
         }
         contents = [
             self.file_content_in_block_template.format(file_name=fn, file_content=code)
@@ -403,23 +394,13 @@ Return just the locations.
             }
             return [], {"raw_output_loc": ""}, traj
 
-        config = create_chatgpt_config(
-            message=message,
-            max_tokens=self.max_tokens,
+        trajs = await self._model.codegen_async(
+            message,
             temperature=0,
-            batch_size=1,
-            model="gpt-4o-2024-05-13",  # use gpt-4o for now.
         )
-        ret = request_chatgpt_engine(config)
-        raw_output = ret.choices[0].message.content
-        traj = {
-            "prompt": message,
-            "response": raw_output,
-            "usage": {
-                "prompt_tokens": ret.usage.prompt_tokens,
-                "completion_tokens": ret.usage.completion_tokens,
-            },
-        }
+        traj = trajs[0]
+        traj["prompt"] = message
+        raw_output = traj["response"]
 
         model_found_locs = extract_code_blocks(raw_output)
         model_found_locs_separated = extract_locs_for_files(
@@ -430,16 +411,15 @@ Return just the locations.
         logging.info(raw_output)
         logging.info("=" * 80)
         logging.info(f"==== extracted locs ====")
-        for loc in model_found_locs_separated:
-            logging.info(loc)
+        # for loc in model_found_locs_separated:
+        #     logging.info(loc)
         logging.info("=" * 80)
-
-        print(raw_output)
 
         return model_found_locs_separated, {"raw_output_loc": raw_output}, traj
 
-    def localize_line_from_coarse_function_locs(
+    async def localize_line_from_coarse_function_locs(
         self,
+        *,
         file_names,
         coarse_locs,
         context_window: int,
@@ -449,6 +429,7 @@ Return just the locations.
         temperature: float = 0.0,
         num_samples: int = 1,
         mock=False,
+        executor: futures.ThreadPoolExecutor,
     ):
         from agentless.util.api_requests import (
             create_chatgpt_config,
@@ -457,16 +438,19 @@ Return just the locations.
         )
 
         file_contents = get_repo_files(self.structure, file_names)
-        topn_content, file_loc_intervals = construct_topn_file_context(
-            coarse_locs,
-            file_names,
-            file_contents,
-            self.structure,
-            context_window=context_window,
-            loc_interval=True,
-            add_space=add_space,
-            sticky_scroll=sticky_scroll,
-            no_line_number=no_line_number,
+        topn_content, file_loc_intervals = await asyncio.wrap_future(
+            executor.submit(
+                construct_topn_file_context,
+                coarse_locs,
+                file_names,
+                file_contents,
+                self.structure,
+                context_window=context_window,
+                loc_interval=True,
+                add_space=add_space,
+                sticky_scroll=sticky_scroll,
+                no_line_number=no_line_number,
+            )
         )
         if no_line_number:
             template = self.obtain_relevant_code_combine_top_n_no_line_number_prompt
@@ -488,21 +472,23 @@ Return just the locations.
                 },
             }
             return [], {"raw_output_loc": ""}, traj
-        config = create_chatgpt_config(
-            message=message,
-            max_tokens=self.max_tokens,
+
+        trajs = await self._model.codegen_async(
+            message,
             temperature=temperature,
-            batch_size=num_samples,
-            model="gpt-4o-2024-05-13",  # use gpt-4o for now.
+            num_samples=num_samples,
         )
-        ret = request_chatgpt_engine(config)
-        raw_outputs = [choice.message.content for choice in ret.choices]
+
+        # Merge trajectories
+        raw_outputs = [t["response"] for t in trajs]
         traj = {
             "prompt": message,
             "response": raw_outputs,
-            "usage": {
-                "prompt_tokens": ret.usage.prompt_tokens,
-                "completion_tokens": ret.usage.completion_tokens,
+            "usage": {  # merge token usage
+                "completion_tokens": sum(
+                    t["usage"]["completion_tokens"] for t in trajs
+                ),
+                "prompt_tokens": sum(t["usage"]["prompt_tokens"] for t in trajs),
             },
         }
         model_found_locs_separated_in_samples = []
@@ -513,15 +499,13 @@ Return just the locations.
             )
             model_found_locs_separated_in_samples.append(model_found_locs_separated)
 
-            logging.info(f"==== raw output ====")
-            logging.info(raw_output)
-            logging.info("=" * 80)
-            print(raw_output)
-            print("=" * 80)
-            logging.info(f"==== extracted locs ====")
-            for loc in model_found_locs_separated:
-                logging.info(loc)
-            logging.info("=" * 80)
+        #     logging.info(f"==== raw output ====")
+        #     logging.info(raw_output)
+        #     logging.info("=" * 80)
+        #     logging.info(f"==== extracted locs ====")
+        #     for loc in model_found_locs_separated:
+        #         logging.info(loc)
+        #     logging.info("=" * 80)
         logging.info("==== Input coarse_locs")
         coarse_info = ""
         for fn, found_locs in coarse_locs.items():
