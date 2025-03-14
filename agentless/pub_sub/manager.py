@@ -18,12 +18,13 @@ DEFAULT_SUBSCRIPTION_ID = "jjong-response-sub"
 
 
 class PubSubManager:
+
     def __init__(
         self,
         project_id: str = _PROJECT_ID,
         topic_id: str = DEFAULT_TOPIC_ID,
         subscription_id: str = DEFAULT_SUBSCRIPTION_ID,
-        max_concurrent_request: int = 16
+        max_concurrent_request: int = 16,
     ):
         # The GCP project ID, model request topic ID, and model response subscription ID.
         self._project_id = project_id
@@ -35,17 +36,14 @@ class PubSubManager:
         self._lock = threading.Lock()
         self._stop_event = None
         self._waiters: dict[str, asyncio.Future] = {}
-        self._rate_limiter = asyncio.Semaphore(max_concurrent_request)
 
     async def __aenter__(self):
         self._stop_event = asyncio.Event()
-        self._listen_future = asyncio.get_running_loop().create_task(
-            self.listen()
-        )
+        self._listen_future = asyncio.get_running_loop().create_task(self.listen())
         return self
 
     async def __aexit__(self, *exc_info):
-        print('PubSubManager is terminating...')
+        print("PubSubManager is terminating...")
         self._stop_event.set()
         await self._listen_future
 
@@ -59,14 +57,10 @@ class PubSubManager:
 
         data = data_str.encode("utf-8")
 
-        async with self._rate_limiter:
-            # When you publish a message, the client returns a future.
-            self._publisher.publish(
-                topic_path, data, request_id=request_id, **attributes
-            )
-            message = await waiter
-            message.ack()
-            return message.data.decode("utf-8")
+        self._publisher.publish(topic_path, data, request_id=request_id, **attributes)
+        message = await waiter
+        message.ack()
+        return message.data.decode("utf-8")
 
     async def listen(self):
         # The `subscription_path` method creates a fully qualified identifier
@@ -83,15 +77,12 @@ class PubSubManager:
             with self._lock:
                 loop, waiter = self._waiters.get(request_id, (None, None))
             if waiter:
-                loop.call_soon_threadsafe(
-                    waiter.set_result,
-                    message
-                )
+                loop.call_soon_threadsafe(waiter.set_result, message)
             else:
-                print(f'Waiter not found for {request_id!r}')
+                print(f"Waiter not found for {request_id!r}")
                 message.ack()
 
-        print(f'Start subscribing {subscription_path}')
+        print(f"Start subscribing {subscription_path}")
         streaming_pull_future = self._subscriber.subscribe(
             subscription_path,
             callback=callback,
@@ -101,7 +92,7 @@ class PubSubManager:
         with self._subscriber:
             try:
                 await self._stop_event.wait()
-                print(f'Canceling subscription for {subscription_path}')
+                print(f"Canceling subscription for {subscription_path}")
                 streaming_pull_future.cancel()  # Trigger the shutdown.
                 streaming_pull_future.result()  # Block until the shutdown is complete.
             except futures.TimeoutError:
@@ -125,14 +116,13 @@ async def main():
     )
 
     async with PubSubManager(
-        topic_id=args.topic_id,
-        subscription_id=args.subscription_id
+        topic_id=args.topic_id, subscription_id=args.subscription_id
     ) as pub_sub_mgr:
         result = await pub_sub_mgr.call_async(
             "What is the meaning of life?",
             {
                 "kernel_id": "evergreen2://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot:v3_s_shared",
-            }
+            },
         )
         print(result)
 
