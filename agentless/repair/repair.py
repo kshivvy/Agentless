@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+from concurrent import futures
 import json
 import logging
 import os
@@ -190,7 +191,7 @@ def _post_process_multifile_repair(
 
     logging.info(f"extracted patch:")
     logging.info("\n".join(diff))
-    print("\n".join(diff))
+    # print("\n".join(diff))
     return edited_file, new_content
 
 
@@ -224,7 +225,6 @@ def construct_topn_file_context(
             fine_grain_loc_only,
             file_content=file_contents[pred_file] if pred_file in file_contents else "",
         )
-
         if len(line_locs) > 0:
             # Note that if no location is predicted, we exclude this file.
             file_loc_content = line_wrap_content(
@@ -240,7 +240,7 @@ def construct_topn_file_context(
     return topn_content, file_loc_intervals
 
 
-async def repair(args, model: models.DecoderBase):
+async def repair(args, model: models.DecoderBase, executor):
     logging.basicConfig(
         filename=f"{args.output_folder}/repair.log",
         level=logging.DEBUG,
@@ -257,6 +257,7 @@ async def repair(args, model: models.DecoderBase):
 
     if os.path.exists(args.output_file):
         prev_o = load_jsonl(args.output_file)
+        prev_o = list(filter(None, prev_o))
     else:
         prev_o = []
 
@@ -267,37 +268,23 @@ async def repair(args, model: models.DecoderBase):
 
     async def handle_loc(loc: data_types.Localization):
         instance_id = loc["instance_id"]
-        found = False
         for o in prev_o:
             if o["instance_id"] == instance_id:
-                found = True
-                break
-
-        if found:
-            logging.info(f"skipping {instance_id} since patch already generated")
-            return
+                return o
 
         logging.info(f"================ repairing {instance_id} ================")
 
         if len(loc["found_files"]) == 0:
-            with open(args.output_file, "a") as f:
-                f.write(
-                    json.dumps(
-                        {
-                            "instance_id": instance_id,
-                            "raw_output": [""],
-                            "try_count": [0],
-                            "all_generations": [[]],
-                            "traj": [],
-                            "prev_content": [[]],
-                            "file_names": [[]],
-                        }
-                    )
-                    + "\n"
-                )
-
             logging.info(f"skipped since no files were localized")
-            return
+            return {
+                "instance_id": instance_id,
+                "raw_output": [""],
+                "try_count": [0],
+                "all_generations": [[]],
+                "traj": [],
+                "prev_content": [[]],
+                "file_names": [[]],
+            }
 
         pred_files = loc["found_files"][: args.top_n]
 
@@ -340,7 +327,6 @@ async def repair(args, model: models.DecoderBase):
         for i, pred_file in enumerate(pred_files):
             if "found_edit_locs" in loc and len(loc["found_edit_locs"]) > i:
                 file_to_edit_locs[pred_file] = loc["found_edit_locs"][i]
-
         topn_content, file_loc_intervals = construct_topn_file_context(
             file_to_edit_locs,
             pred_files,
@@ -355,24 +341,16 @@ async def repair(args, model: models.DecoderBase):
         )
 
         if topn_content.strip() == "":
-            with open(args.output_file, "a") as f:
-                f.write(
-                    json.dumps(
-                        {
-                            "instance_id": instance_id,
-                            "raw_output": [""],
-                            "try_count": [0],
-                            "all_generations": [[]],
-                            "traj": [],
-                            "prev_content": [[]],
-                            "file_names": [[]],
-                        }
-                    )
-                    + "\n"
-                )
-
             logging.info(f"skipped since no files were localized")
-            return
+            return {
+                "instance_id": instance_id,
+                "raw_output": [""],
+                "try_count": [0],
+                "all_generations": [[]],
+                "traj": [],
+                "prev_content": [[]],
+                "file_names": [[]],
+            }
 
         # Construct prompt.
         # Note that we assume there's no feedback, and we always use the same prompt in each turn.
@@ -423,12 +401,14 @@ async def repair(args, model: models.DecoderBase):
             logging.info(f"raw output:\n{raw_output}")
             all_generations.append(raw_output)
 
-            edited_file, new_content = _post_process_multifile_repair(
+            fut = executor.submit(
+                _post_process_multifile_repair,
                 raw_output,
                 file_contents,
                 file_loc_intervals,
                 diff_format=args.diff_format,
             )
+            edited_file, new_content = await asyncio.wrap_future(fut)
             if edited_file in file_contents:
                 prev_content = file_contents[edited_file]
                 prev_contents.append(prev_content)
@@ -443,27 +423,21 @@ async def repair(args, model: models.DecoderBase):
         all_generations = [all_generations]
         prev_contents = [prev_contents]
         file_names = [file_names]
+        return {
+            "instance_id": instance_id,
+            "raw_output": raw_outputs,
+            "all_generations": all_generations,
+            "try_count": counts,
+            "traj": traj,
+            "prev_content": prev_contents,
+            "file_names": file_names,
+        }
 
-        with open(args.output_file, "a") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "instance_id": instance_id,
-                        "raw_output": raw_outputs,
-                        "all_generations": all_generations,
-                        "try_count": counts,
-                        "traj": traj,
-                        "prev_content": prev_contents,
-                        "file_names": file_names,
-                    }
-                )
-                + "\n"
-            )
-
-    async for _ in tqdm_utils.as_completed(
-        [handle_loc(loc) for loc in locs], total=len(locs)
+    async for item in tqdm_utils.as_completed(
+        [handle_loc(loc) for loc in locs], total=len(locs), desc="repair"
     ):
-        pass
+        with open(args.output_file, "a") as f:
+            f.write(json.dumps(item) + "\n")
 
 
 def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, args):
@@ -517,33 +491,28 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
     except Exception as e:
         print(raw_output_text)
         print(e)
+        raise
 
     return git_diffs, raw_git_diffs, content
 
 
-def post_process_repair(args):
+async def post_process_repair(args, executor, tqdm_args: None):
     """
     apply some diff formatting.
     """
     raw_outputs = load_jsonl(args.raw_output_file)
+    raw_outputs = list(filter(None, raw_outputs))
     locs = load_jsonl(args.loc_file)
 
-    for raw_output in raw_outputs:
+    def handle_raw_output(raw_output):
         instance_id = raw_output["instance_id"]
 
         if raw_output["raw_output"] == "":
-            with open(args.output_file, "a") as f:
-                f.write(
-                    json.dumps(
-                        {
-                            "model_name_or_path": "agentless",
-                            "instance_id": instance_id,
-                            "model_patch": "",
-                        }
-                    )
-                    + "\n"
-                )
-            continue
+            return {
+                "model_name_or_path": "agentless",
+                "instance_id": instance_id,
+                "model_patch": "",
+            }
 
         if args.select_id == -1:
             # Use the last generation
@@ -602,20 +571,27 @@ def post_process_repair(args):
             git_diffs = ""
             raw_git_diffs = ""
             content = ""
+        return {
+            "model_name_or_path": "agentless",
+            "instance_id": instance_id,
+            "model_patch": git_diffs.lstrip(),
+            "raw_model_patch": raw_git_diffs.lstrip(),
+            "original_file_content": content,
+        }
 
+    async def handle_raw_output_async(raw_output):
+        return await asyncio.get_running_loop().run_in_executor(
+            executor, handle_raw_output, raw_output
+        )
+
+    async for item in tqdm_utils.as_completed(
+        [handle_raw_output_async(raw_output) for raw_output in raw_outputs],
+        total=len(raw_outputs),
+        desc="post_process_repair",
+        **(tqdm_args or {}),
+    ):
         with open(args.output_file, "a") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "model_name_or_path": "agentless",
-                        "instance_id": instance_id,
-                        "model_patch": git_diffs.lstrip(),
-                        "raw_model_patch": raw_git_diffs.lstrip(),
-                        "original_file_content": content,
-                    }
-                )
-                + "\n"
-            )
+            f.write(json.dumps(item) + "\n")
 
 
 async def main():
@@ -674,28 +650,35 @@ async def main():
     ) as pub_sub_mgr:
         model = models.PubSubDecoder(name=args.model, pub_sub_mgr=pub_sub_mgr)
 
-        if args.post_process:
-            args.raw_output_file = args.output_file
-            if args.select_id == -1:
-                args.output_file = args.raw_output_file.replace(
-                    ".jsonl", "_processed.jsonl"
-                )
+        with futures.ThreadPoolExecutor(max_workers=args.parallelism) as executor:
+            if args.post_process:
+                args.raw_output_file = args.output_file
+                if args.select_id == -1:
+                    args.output_file = args.raw_output_file.replace(
+                        ".jsonl", "_processed.jsonl"
+                    )
+                else:
+                    args.output_file = args.raw_output_file.replace(
+                        ".jsonl", f"_{args.select_id}_processed.jsonl"
+                    )
+                await post_process_repair(args, executor)
+            elif args.gen_and_process:
+                await repair(args, model, executor)
+                args.raw_output_file = args.output_file
+                for i in range(args.max_samples):
+                    args.output_file = args.raw_output_file.replace(
+                        ".jsonl", f"_{i}_processed.jsonl"
+                    )
+                    args.select_id = i
+                    await post_process_repair(
+                        args,
+                        executor,
+                        tqdm_args={
+                            "desc": f"post_process_repair {i} / {args.max_samples}"
+                        },
+                    )
             else:
-                args.output_file = args.raw_output_file.replace(
-                    ".jsonl", f"_{args.select_id}_processed.jsonl"
-                )
-            post_process_repair(args)
-        elif args.gen_and_process:
-            await repair(args, model)
-            args.raw_output_file = args.output_file
-            for i in range(args.max_samples):
-                args.output_file = args.raw_output_file.replace(
-                    ".jsonl", f"_{i}_processed.jsonl"
-                )
-                args.select_id = i
-                post_process_repair(args)
-        else:
-            await repair(args, model)
+                await repair(args, model, executor)
 
 
 if __name__ == "__main__":

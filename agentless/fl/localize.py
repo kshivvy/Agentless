@@ -211,7 +211,9 @@ async def localize(args: Args, model: models.DecoderBase):
             )
             for bug in swe_bench_data
         ]
-        async for loc in tqdm_utils.as_completed(locs, total=len(locs)):
+        async for loc in tqdm_utils.as_completed(
+            locs, total=len(locs), desc="localize"
+        ):
             with open(args.output_file, "a") as f:
                 f.write(json.dumps(loc) + "\n")
 
@@ -335,7 +337,7 @@ async def main():
 
     logging.basicConfig(
         filename=f"{args.output_folder}/localize.log",
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
     async with manager.PubSubManager(
@@ -352,4 +354,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main(), debug=True)
+    asyncio.run(main())

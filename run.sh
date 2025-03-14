@@ -7,12 +7,12 @@ set -e  # Exit on error
 MODEL="${MODEL:-evergreen://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot_v3:v3_s_shared_api}"
 
 # Pub/Sub topics
-TOPIC_ID="${TOPIC_ID:-jjong-request-2}"
-SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-jjong-response-2-sub}"
+TOPIC_ID="${TOPIC_ID:-jjong-request}"
+SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-jjong-response-sub}"
 
-PARALLELISM="${PARALLELISM:-64}"
+PARALLELISM="${PARALLELISM:-32}"
 CONTEXT_WINDOW=10
-REPAIR_SAMPLES=20
+REPAIR_SAMPLES=10
 
 if [ -z "$1" ]; then
     RESULT_DIR="$PWD/results"

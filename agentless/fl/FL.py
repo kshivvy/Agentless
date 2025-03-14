@@ -1,9 +1,10 @@
 import asyncio
 from concurrent import futures
-import functools
 import logging
 from abc import ABC, abstractmethod
+from typing import TypedDict
 
+from agentless import data_types
 from agentless.repair.repair import construct_topn_file_context
 from agentless.util.compress_file import get_skeleton
 from agentless.util import models
@@ -14,6 +15,10 @@ from agentless.util.preprocess_data import (
     line_wrap_content,
     show_project_structure,
 )
+
+
+class RawOutput(TypedDict):
+    raw_output_loc: str
 
 
 class FL(ABC):
@@ -230,7 +235,9 @@ Return just the locations.
     def _parse_model_return_lines(self, content: str) -> list[str]:
         return content.strip().split("\n")
 
-    async def localize(self, top_n=1, mock=False) -> tuple[list, list, list, any]:
+    async def localize(
+        self, top_n=1, mock=False
+    ) -> tuple[list[str], RawOutput, data_types.Trajectory]:
 
         found_files = []
 
@@ -281,8 +288,8 @@ Return just the locations.
         )
 
     async def localize_function_for_files(
-        self, file_names, mock=False
-    ) -> tuple[list, dict, dict]:
+        self, file_names: list, mock=False
+    ) -> tuple[list[list[str]], RawOutput, data_types.Trajectory]:
         from agentless.util.api_requests import (
             create_chatgpt_config,
             num_tokens_from_messages,
@@ -349,7 +356,7 @@ Return just the locations.
 
     async def localize_function_from_compressed_files(
         self, *, file_names, mock=False, executor: futures.ThreadPoolExecutor
-    ):
+    ) -> tuple[list[list[str]], RawOutput, data_types.Trajectory]:
         from agentless.util.api_requests import (
             create_chatgpt_config,
             num_tokens_from_messages,
@@ -366,7 +373,7 @@ Return just the locations.
             *[get_skeleton_async(code) for code in file_contents.values()]
         )
         compressed_file_contents = {
-            fn: skeleton for fn, skeleton in zip(file_contents, skeletons)
+            fn: skeleton for fn, skeleton in zip(file_contents.keys(), skeletons)
         }
         contents = [
             self.file_content_in_block_template.format(file_name=fn, file_content=code)

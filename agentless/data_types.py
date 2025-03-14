@@ -34,7 +34,7 @@ class Localization(TypedDict):
     instance_id: str
     found_files: list[str]
     additional_artifact_loc_file: list[str]
-    file_traj: dict[str, Any]
+    file_traj: Trajectory
     found_related_locs: Any
     additional_artifact_loc_related: Any
     related_loc_traj: Trajectory
