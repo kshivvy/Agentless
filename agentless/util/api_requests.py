@@ -214,6 +214,6 @@ def request_pub_sub_engine(
             else:
                 logger.warning("Retrying after an unknown error...")
             time.sleep(10 * retries)
-        retries = 1
+        retries += 1
 
     return ret
