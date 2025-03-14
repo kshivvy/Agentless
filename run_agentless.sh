@@ -1,11 +1,17 @@
 #!/bin/bash
 
-# Required arguments
-MODEL="${MODEL}"
+# LaMDA CLI --kernel_id
+MODEL="${MODEL:}"
+
+# Open AI API key, used for Step 3 of the eval to genereate embeddings.
+OPEN_AI_KEY="${OPEN_AI_KEY:}"
 
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-lamda-request}"
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-lamda-response-sub}"
+
+# Google Compute Storage arguments
+DEST_DIR="${DEST_DIR:}" # Required
 
 # TIMOTHY'S ORIGINAL SCRIPT, WITH SLIGHT MODIFICATIONS
 
@@ -13,9 +19,11 @@ SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-lamda-response-sub}"
 set -e  # Exit on error
 
 # Set parallelism level - can be adjusted based on available resources
-NUM_THREADS="${NUM_THREADS:-64}"
-NUM_WORKERS_TESTS="${NUM_WORKERS_TESTS:-32}"
-NUM_WORKERS_REPAIR="${NUM_WORKERS_REPAIR:-16}"
+NUM_THREADS="${NUM_THREADS:-32}"
+NUM_EMBEDDING_THREADS="${NUM_EMBEDDING_THREADS:-1}"
+NUM_WORKERS_TESTS="${NUM_WORKERS_TESTS:-16}"
+NUM_WORKERS_REPAIR="${NUM_WORKERS_REPAIR:-8}"
+NUM_WORKERS_UPLOAD="${NUM_WORKERS_UPLOAD:-8}"
 
 # Variables for checkpointing
 CHECKPOINT_FILE="results/swe-bench-lite/checkpoint.txt"
@@ -64,13 +72,18 @@ run_step() {
 
 # Set up environment
 log_progress "Setting up environment..."
-# export PATH="$HOME/miniconda3/bin:$PATH"
-# source "$HOME/miniconda3/etc/profile.d/conda.sh"
 source /opt/conda/etc/profile.d/conda.sh
 conda activate agentless
 
 # Set PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$(pwd)
+
+# Set the OPENAI_API_KEY
+export OPENAI_API_KEY=$OPEN_AI_KEY
+
+# Use local repository structures instead of cloning from GitHub
+export PROJECT_FILE_LOC="$(pwd)/repo_cache/repo_structures"
+log_progress "Using local repository structures from $PROJECT_FILE_LOC"
 
 # Set the Google API key (already hardcoded in api_requests.py)
 export GOOGLE_API_KEY="AIzaSyBWcPVvWoR9pUOFzeRgsuW2tG-U-ZPiSbU"
@@ -111,7 +124,7 @@ python agentless/fl/retrieve.py --index_type simple \\
                              --filter_file results/swe-bench-lite/file_level_irrelevant/loc_outputs.jsonl \\
                              --output_folder results/swe-bench-lite/retrievel_embedding \\
                              --persist_dir embedding/swe-bench_simple \\
-                             --num_threads $NUM_THREADS
+                             --num_threads $NUM_EMBEDDING_THREADS
 "
 
 # Step 4: Combine LLM-predicted files with retrieved files
@@ -399,6 +412,13 @@ python agentless/repair/rerank.py --patch_folder results/swe-bench-lite/repair_s
                                 --deduplicate \\
                                 --regression \\
                                 --reproduction
+"
+
+# Step 16: Upload results directory to Google Cloud Storage.
+run_step 16 "Uploading results to Google Cloud Storage" "
+python agentless/gcs/upload_results.py --source_dir results \\
+                                     --dest_dir $DEST_DIR \\
+                                     --num_workers $NUM_WORKERS_UPLOAD
 "
 
 log_progress "All done! Final selected patches are in all_preds.jsonl"
