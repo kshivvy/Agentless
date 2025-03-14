@@ -37,8 +37,8 @@ def check_code_differ_by_just_empty_lines(code, prev_code) -> bool:
     return normalized_code1 == normalized_code2
 
 
-def subprocess_run(shell_cmd):
-    subprocess.run(shell_cmd, shell=True, check=True, capture_output=True)
+def subprocess_run(shell_cmd, check=True):
+    return subprocess.run(shell_cmd, shell=True, check=check, capture_output=True)
 
 
 def lint_code(repo_playground, temp_name, code, prev_code="") -> tuple[bool, set, set]:
@@ -59,7 +59,8 @@ def lint_code(repo_playground, temp_name, code, prev_code="") -> tuple[bool, set
     # check for fatal errors
     fatal = "E9,F821,F823,F831,F406,F407,F701,F702,F704,F706"
     o = subprocess_run(
-        f"flake8 --select={fatal} --isolated {repo_playground}/{temp_name}"
+        f"flake8 --select={fatal} --isolated {repo_playground}/{temp_name}",
+        check=False
     )
     s = o.stdout.decode("utf-8")
 
@@ -74,6 +75,7 @@ def lint_code(repo_playground, temp_name, code, prev_code="") -> tuple[bool, set
 
     o = subprocess_run(
         f"flake8 --select={fatal} --isolated {repo_playground}/{temp_name}",
+        check=False
     )
     s = o.stdout.decode("utf-8")
 
