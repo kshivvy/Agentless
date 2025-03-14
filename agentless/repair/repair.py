@@ -496,7 +496,7 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
     return git_diffs, raw_git_diffs, content
 
 
-async def post_process_repair(args, executor, tqdm_args: None):
+async def post_process_repair(args, executor, tqdm_desc_suffix: str = ""):
     """
     apply some diff formatting.
     """
@@ -587,8 +587,7 @@ async def post_process_repair(args, executor, tqdm_args: None):
     async for item in tqdm_utils.as_completed(
         [handle_raw_output_async(raw_output) for raw_output in raw_outputs],
         total=len(raw_outputs),
-        desc="post_process_repair",
-        **(tqdm_args or {}),
+        desc="post_process_repair" + tqdm_desc_suffix,
     ):
         with open(args.output_file, "a") as f:
             f.write(json.dumps(item) + "\n")
@@ -673,9 +672,7 @@ async def main():
                     await post_process_repair(
                         args,
                         executor,
-                        tqdm_args={
-                            "desc": f"post_process_repair {i} / {args.max_samples}"
-                        },
+                        tqdm_desc_suffix=f" [{i} / {args.max_samples}]",
                     )
             else:
                 await repair(args, model, executor)
