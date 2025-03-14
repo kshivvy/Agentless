@@ -784,6 +784,10 @@ def main():
 
     args = parser.parse_args()
 
+    manager.PUB_SUB_MANAGER.topic_id = args.topic_id
+    manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
+    manager.PUB_SUB_MANAGER.start_listening()
+
     assert (not "deepseek" in args.model) or (
         args.backend == "deepseek"
     ), "Must specify `--backend deepseek` if using a DeepSeek model"
