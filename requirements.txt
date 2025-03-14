@@ -6,7 +6,8 @@ tiktoken
 libcst
 llama-index
 jsonlines
-swebench @ git+https://github.com/princeton-nlp/SWE-bench@5f5a7df799663adba4b191eca3d675faf3621fe2
+# Release 2.0.13, on Aug 20, 2024
+swebench @ git+https://github.com/princeton-nlp/SWE-bench@7336033d65d32ec62f9ce2419aa8f3a757b06ce2
 
 # Required GCP libraries.
 google-cloud-pubsub
