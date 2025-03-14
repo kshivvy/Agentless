@@ -202,9 +202,9 @@ def request_pub_sub_engine(
 
             while not ret and (time.time() - start_time) <= timeout:
                 ret = PUB_SUB_MANAGER.get(request_id)
+                # Sleep for 100 ms to avoid lock contention.
+                time.sleep(0.1)
             PUB_SUB_MANAGER.evict(request_id)
-            print("Model response:")
-            print(ret)
 
         except Exception as e:
             print(e)
