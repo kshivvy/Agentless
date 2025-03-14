@@ -11,10 +11,10 @@ from google.cloud import pubsub_v1
 _PROJECT_ID = "docker-rlef-exploration"
 
 # The Pub/Sub topic IDs.
-REQUEST_TOPIC_ID = "lamda-request"
+REQUEST_TOPIC_ID = "kshivvy-request"
 
 # The Pub/Sub subscription IDs.
-RESPONSE_SUBSCRIPTION_ID = "lamda-response-sub"
+RESPONSE_SUBSCRIPTION_ID = "kshivvy-response-sub"
 
 class PubSubManager:
     def __init__(
@@ -135,7 +135,7 @@ def main():
     request_id = PUB_SUB_MANAGER.get_request_id()
     data_str = "What is the meaning of life?"
     attributes = {
-        "kernel_id": "evergreen2://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot:v3_s_shared",
+        "kernel_id": "als:bard" # "evergreen2://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot:v3_s_shared",
     }
     PUB_SUB_MANAGER.publish(data_str, request_id, attributes)
     PUB_SUB_MANAGER.start_listening()
