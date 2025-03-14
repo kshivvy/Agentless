@@ -7,10 +7,11 @@ set -e  # Exit on error
 MODEL="${MODEL:-evergreen://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot_v3:v3_s_shared_api}"
 
 # Pub/Sub topics
-TOPIC_ID="${TOPIC_ID:-jjong-request}"
-SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-jjong-response-sub}"
+TOPIC_ID="${TOPIC_ID:-$USER-request}"
+SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-response-sub}"
 
 PARALLELISM="${PARALLELISM:-32}"
+DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
 CONTEXT_WINDOW=10
 REPAIR_SAMPLES=10
 
@@ -31,6 +32,7 @@ echo SUBSCRIPTION_ID=$SUBSCRIPTION_ID
 echo NUM_THREAD=$PARALLELISM
 echo RESULT_DIR="$RESULT_DIR"
 echo PROJECT_FILE_LOC=$PROJECT_FILE_LOC
+echo DEST_DIR=$DEST_DIR
 
 # Idempotent workspace setup.
 mkdir -p $RESULT_DIR
@@ -112,6 +114,6 @@ python agentless/repair/rerank.py \
 
 run_step 4 "Uploading results to Google Cloud Storage" \
 python agentless/gcs/upload_results.py \
---source_dir results \
---dest_dir $DEST_DIR \
---num_workers $PARALLELISM
+    --source_dir="$RESULT_DIR" \
+    --dest_dir="$DEST_DIR" \
+    --num_workers=$PARALLELISM
