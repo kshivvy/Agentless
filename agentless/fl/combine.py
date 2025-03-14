@@ -26,9 +26,12 @@ def combine_file_level(args):
         instance_id = pred["instance_id"]
 
         model_loc = pred["found_files"]
-        retrieve_loc = [x for x in embed_used_locs if x["instance_id"] == instance_id][
-            0
-        ]["found_files"]
+        try:
+            retrieve_loc = [x for x in embed_used_locs if x["instance_id"] == instance_id][
+                0
+            ]["found_files"]
+        except IndexError:
+            retrieve_loc = []
 
         combined_loc_counter = Counter()
         combined_locs = []
