@@ -293,7 +293,7 @@ async def repair(args, model: models.DecoderBase, executor):
         bench_data = [x for x in swe_bench_data if x["instance_id"] == instance_id][0]
         problem_statement = bench_data["problem_statement"]
         structure = get_repo_structure(
-            instance_id, bench_data["repo"], bench_data["base_commit"], "playground"
+            instance_id, bench_data["repo"], bench_data["base_commit"], args.temp_folder
         )
 
         files, _, _ = get_full_file_paths_and_classes_and_functions(structure)
@@ -455,7 +455,9 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
         if edited_file in file_contents:
             content = file_contents[edited_file]
 
-            git_diff = fake_git_repo("playground", edited_file, content, new_content)
+            git_diff = fake_git_repo(
+                args.temp_folder, edited_file, content, new_content
+            )
 
             raw_git_diffs += "\n" + git_diff.replace(
                 r"\ No newline at end of file\n", ""
@@ -463,7 +465,7 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
 
             syntax_success = check_syntax(new_content)
             lint_success, prev_errors, errors = lint_code(
-                "playground", "test.py", new_content, file_contents[edited_file]
+                args.temp_folder, "test.py", new_content, file_contents[edited_file]
             )
 
             differ_by_empty_lines = check_code_differ_by_just_empty_lines(
@@ -615,6 +617,7 @@ async def main():
     )
     parser.add_argument("--model", type=str, default="gpt-4o-2024-05-13")
     parser.add_argument("--output_folder", type=str, required=True)
+    parser.add_argument("--temp_folder", type=str, required=True)
     parser.add_argument(
         "--only_correct", action="store_true"
     )  # only work on correct loc files (saves time)

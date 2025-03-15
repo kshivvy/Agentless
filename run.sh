@@ -15,6 +15,7 @@ DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
 CONTEXT_WINDOW=10
 REPAIR_SAMPLES=10
 TRUNCATE="${TRUNCATE:-0}"
+TEMP_DIR="${TEMP_DIR:-/tmp}"
 
 if [ -z "$RESULT_DIR" ]; then
     if [ -z "$1" ]; then
@@ -34,6 +35,7 @@ echo TOPIC_ID=$TOPIC_ID
 echo SUBSCRIPTION_ID=$SUBSCRIPTION_ID
 echo NUM_THREAD=$PARALLELISM
 echo RESULT_DIR="$RESULT_DIR"
+echo TEMP_DIR="$TEMP_DIR"
 echo PROJECT_FILE_LOC=$PROJECT_FILE_LOC
 echo DEST_DIR=$DEST_DIR
 echo TRUNCATE=$TRUNCATE
@@ -97,6 +99,7 @@ run_step 2 "Running repair" \
 python agentless/repair/repair.py \
     --loc_file="$RESULT_DIR/location/loc_outputs.jsonl" \
     --output_folder="$RESULT_DIR/repair" \
+    --temp_folder="$TEMP_DIR" \
     --loc_interval \
     --top_n=3 \
     --context_window=$CONTEXT_WINDOW \
@@ -112,6 +115,7 @@ python agentless/repair/repair.py \
 run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \
     --patch_folder="$RESULT_DIR/repair" \
+    --temp_folder="$TEMP_DIR" \
     --num_samples=$REPAIR_SAMPLES \
     --deduplicate \
     --plausible \

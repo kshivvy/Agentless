@@ -219,7 +219,7 @@ def normalize_patches(args):
             patch = d["model_patch"]
             original_file_content = d["original_file_content"]
             normalized_patch = normalize_patch(
-                instance_id, patch, original_file_content
+                instance_id, patch, original_file_content, args.temp_folder
             )
             d["normalized_patch"] = normalized_patch
         with open(output_folder / f"output_{i}_normalized.jsonl", "w") as f:
@@ -230,6 +230,7 @@ def normalize_patches(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--patch_folder", type=str)
+    parser.add_argument("--temp_folder", type=str, required=True)
     parser.add_argument("--target", type=str, default=None)
     parser.add_argument("--num_samples", type=int, default=11)
     parser.add_argument("--deduplicate", action="store_true")

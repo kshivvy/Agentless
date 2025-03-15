@@ -294,7 +294,9 @@ def remove_comments_and_docstrings(source):
     return out
 
 
-def normalize_patch(instance_id, patch: str, original_file_content: str) -> str:
+def normalize_patch(
+    instance_id, patch: str, original_file_content: str, temp_folder: str
+) -> str:
     "Remove edits to trailing spaces and comments in the patch."
     if not patch.strip():
         return ""
@@ -311,7 +313,7 @@ def normalize_patch(instance_id, patch: str, original_file_content: str) -> str:
     edited_file = file_changes[0]["file"]
     old_content = original_file_content
     # Get new file
-    new_content = fake_git_apply("playground", edited_file, old_content, patch)
+    new_content = fake_git_apply(temp_folder, edited_file, old_content, patch)
     if new_content is None:
         # Error during applying diff
         # print("ERROR in applying patch")
@@ -341,7 +343,7 @@ def normalize_patch(instance_id, patch: str, original_file_content: str) -> str:
         remove_docstring_new_content = new_content
 
     diff = fake_git_repo(
-        "playground",
+        temp_folder,
         edited_file,
         remove_docstring_old_content,
         remove_docstring_new_content,
