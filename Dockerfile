@@ -18,10 +18,7 @@ WORKDIR /app
 
 # Download cached files.
 RUN mkdir -p /app/data && \
-    curl -o /app/data/agentless_swebench_lite.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v1.5.0/agentless_swebench_lite.zip && \
-    unzip /app/data/agentless_swebench_lite.zip -d /app/data
-
-RUN curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
+    curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
     unzip /app/data/swebench_lite_repo_structure.zip -d /app/data
 
 # Set PYTHONPATH to include the /app directory for module imports
