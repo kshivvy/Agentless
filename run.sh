@@ -38,7 +38,6 @@ echo TRUNCATE=$TRUNCATE
 
 # Idempotent workspace setup.
 mkdir -p $RESULT_DIR
-export PROJECT_FILE_LOC=/Users/jjong/data/swebench_lite_repo_structure
 
 # Function to log progress
 log_progress() {
