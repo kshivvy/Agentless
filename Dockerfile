@@ -16,8 +16,13 @@ RUN apt-get install -y git unzip curl
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy all files into the container
-COPY . /app/
+# Download cached files.
+RUN mkdir -p /app/data && \
+    curl -o /app/data/agentless_swebench_lite.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v1.5.0/agentless_swebench_lite.zip && \
+    unzip /app/data/agentless_swebench_lite.zip -d /app/data
+
+RUN curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
+    unzip /app/data/swebench_lite_repo_structure.zip -d /app/data
 
 # Set PYTHONPATH to include the /app directory for module imports
 ENV PYTHONPATH="/app"
@@ -26,18 +31,18 @@ ENV PYTHONPATH="/app"
 # This installs Python and any dependencies defined in requirements.txt via pip
 RUN conda create -y -n agentless python=3.11
 
+ENV PATH="/opt/conda/envs/agentless/bin:$PATH"
+
+# Copy requirements.txt file first as we need to 
+COPY requirements.txt .
+
 # Initialize conda and install dependencies from the requirements.txt
-RUN echo "source /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    /bin/bash -c "source /opt/conda/etc/profile.d/conda.sh && conda activate agentless && pip install --no-cache-dir -r requirements.txt"
-
-RUN mkdir -p /app/data && \
-    curl -o /app/data/agentless_swebench_lite.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v1.5.0/agentless_swebench_lite.zip && \
-    unzip /app/data/agentless_swebench_lite.zip -d /app/data
-
-RUN curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
-    unzip /app/data/swebench_lite_repo_structure.zip -d /app/data
+RUN "pip install --no-cache-dir -r requirements.txt"
 
 ENV PROJECT_FILE_LOC=/app/data/repo_structure
+
+# Copy rest of the files into the container
+COPY . /app/
 
 # Set the default command to run the shell script inside the Conda environment
 CMD ["bash", "/app/run.sh"]
