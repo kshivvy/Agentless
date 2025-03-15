@@ -12,8 +12,8 @@ SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-response-sub}"
 
 PARALLELISM="${PARALLELISM:-32}"
 DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
-CONTEXT_WINDOW=10
-REPAIR_SAMPLES=10
+CONTEXT_WINDOW="${CONTEXT_WINDOW:-10}"
+NUM_SAMPLES="${NUM_SAMPLES:-10}"
 TRUNCATE="${TRUNCATE:-0}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
 
@@ -33,7 +33,8 @@ CURRENT_STEP=0
 echo MODEL=$MODEL
 echo TOPIC_ID=$TOPIC_ID
 echo SUBSCRIPTION_ID=$SUBSCRIPTION_ID
-echo NUM_THREAD=$PARALLELISM
+echo PARALLELISM=$PARALLELISM
+echo NUM_SAMPLES=$NUM_SAMPLES
 echo RESULT_DIR="$RESULT_DIR"
 echo TEMP_DIR="$TEMP_DIR"
 echo PROJECT_FILE_LOC=$PROJECT_FILE_LOC
@@ -103,7 +104,7 @@ python agentless/repair/repair.py \
     --loc_interval \
     --top_n=3 \
     --context_window=$CONTEXT_WINDOW \
-    --max_samples=$REPAIR_SAMPLES \
+    --max_samples=$NUM_SAMPLES \
     --cot \
     --diff_format \
     --gen_and_process \
@@ -116,7 +117,7 @@ run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \
     --patch_folder="$RESULT_DIR/repair" \
     --temp_folder="$TEMP_DIR" \
-    --num_samples=$REPAIR_SAMPLES \
+    --num_samples=$NUM_SAMPLES \
     --deduplicate \
     --plausible \
     --output_file="$RESULT_DIR/all_preds.jsonl"
