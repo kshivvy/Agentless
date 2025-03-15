@@ -16,11 +16,13 @@ CONTEXT_WINDOW=10
 REPAIR_SAMPLES=10
 TRUNCATE="${TRUNCATE:-0}"
 
-if [ -z "$1" ]; then
-    RESULT_DIR="$PWD/results"
-else
-    RESULT_DIR="$PWD/results/$1"
-    shift
+if [ -z "$RESULT_DIR" ]; then
+    if [ -z "$1" ]; then
+        RESULT_DIR="$PWD/results"
+    else
+        RESULT_DIR="$PWD/results/$1"
+        shift
+    fi
 fi
 
 CHECKPOINT_FILE="$RESULT_DIR/checkpoint.txt"
