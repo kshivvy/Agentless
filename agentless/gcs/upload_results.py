@@ -49,11 +49,11 @@ def main():
         "--dest_dir", type=str, required=True, help="GCS directory to upload to"
     )
     parser.add_argument(
-        "--workers", type=int, default=8, help="Number of workers to use for upload"
+        "--num_workers", type=int, default=8, help="Number of workers to use for upload"
     )
     args = parser.parse_args()
 
-    bulk_upload(args.bucket_name, args.source_dir, args.dest_dir, args.workers)
+    bulk_upload(args.bucket_name, args.source_dir, args.dest_dir, args.num_workers)
 
 
 if __name__ == "__main__":
