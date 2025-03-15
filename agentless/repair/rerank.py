@@ -110,7 +110,7 @@ class SetEncoder(json.JSONEncoder):
 def majority_voting(args, execution_results):
     all_pred = []
 
-    for instance_id, samples in execution_results.items():
+    for instance_id, samples in tqdm(list(execution_results.items())):
         patch_keys = [item["normalized_patch"] for item in samples]
         plausibles = [item["plausible"] for item in samples]
         raw_patches = [item["patch"] for item in samples]
