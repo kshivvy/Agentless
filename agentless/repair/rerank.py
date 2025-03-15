@@ -201,7 +201,7 @@ def majority_voting(args, execution_results):
             }
         )
 
-    with open("all_preds.jsonl", "w") as f:
+    with open(args.output_file, "w") as f:
         for pred in all_pred:
             f.write(json.dumps(pred) + "\n")
 
@@ -234,6 +234,7 @@ def main():
     parser.add_argument("--num_samples", type=int, default=11)
     parser.add_argument("--deduplicate", action="store_true")
     parser.add_argument("--plausible", action="store_true")
+    parser.add_argument("--output_file", type=str, required=True)
     args = parser.parse_args()
 
     # first normalize
