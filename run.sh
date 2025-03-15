@@ -106,7 +106,7 @@ python agentless/repair/repair.py \
     --topic_id=$TOPIC_ID \
     --subscription_id=$SUBSCRIPTION_ID \
     --model=$MODEL \
-    --parallelism=$PARALLELISM \
+    --parallelism=$PARALLELISM
 
 run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \

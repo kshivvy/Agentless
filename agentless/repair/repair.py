@@ -672,7 +672,7 @@ async def main():
                     await post_process_repair(
                         args,
                         executor,
-                        tqdm_desc_suffix=f" [{i} / {args.max_samples}]",
+                        tqdm_desc_suffix=f" [{i + 1} / {args.max_samples}]",
                     )
             else:
                 await repair(args, model, executor)
