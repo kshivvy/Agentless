@@ -14,6 +14,7 @@ PARALLELISM="${PARALLELISM:-32}"
 DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
 CONTEXT_WINDOW=10
 REPAIR_SAMPLES=10
+TRUNCATE="${TRUNCATE:-0}"
 
 if [ -z "$1" ]; then
     RESULT_DIR="$PWD/results"
@@ -33,6 +34,7 @@ echo NUM_THREAD=$PARALLELISM
 echo RESULT_DIR="$RESULT_DIR"
 echo PROJECT_FILE_LOC=$PROJECT_FILE_LOC
 echo DEST_DIR=$DEST_DIR
+echo TRUNCATE=$TRUNCATE
 
 # Idempotent workspace setup.
 mkdir -p $RESULT_DIR
@@ -87,7 +89,8 @@ python agentless/fl/localize.py \
     --topic_id=$TOPIC_ID \
     --subscription_id=$SUBSCRIPTION_ID \
     --model=$MODEL \
-    --parallelism=$PARALLELISM
+    --parallelism=$PARALLELISM \
+    --truncate=$TRUNCATE
 
 run_step 2 "Running repair" \
 python agentless/repair/repair.py \

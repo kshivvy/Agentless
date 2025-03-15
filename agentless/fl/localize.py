@@ -54,6 +54,7 @@ class Args:
     model: str | None = None
     topic_id: str = manager.DEFAULT_TOPIC_ID
     subscription_id: str = manager.DEFAULT_SUBSCRIPTION_ID
+    truncate: int | None = None
 
 
 def get_repo_structure(instance_id: str) -> dict[str, Any]:
@@ -198,6 +199,8 @@ async def localize(args: Args, model: models.DecoderBase):
     swe_bench_data: Iterable[data_types.Bug] = load_dataset(
         "princeton-nlp/SWE-bench_Lite", split="test"
     )
+    if args.truncate and 0 < args.truncate < len(swe_bench_data):
+        swe_bench_data = list(swe_bench_data)[: args.truncate]
     start_file_locs = load_jsonl(args.start_file) if args.start_file else None
     with futures.ThreadPoolExecutor(max_workers=args.parallelism) as executor:
         locs = [
@@ -308,6 +311,7 @@ async def main():
     parser.add_argument(
         "--subscription_id", type=str, default=manager.DEFAULT_SUBSCRIPTION_ID
     )
+    parser.add_argument("--truncate", type=int, default=None)
 
     args = parser.parse_args()
 
