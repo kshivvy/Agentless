@@ -14,7 +14,7 @@ execution_results = dict()
 
 
 def _load_results(args):
-    global execution_results
+    execution_results = {}
 
     # assumes interval
     interval = (0, args.num_samples - 1)
@@ -38,6 +38,7 @@ def _load_results(args):
                 print(i)
                 print(patch)
                 exit(-1)
+    return execution_results
 
 
 def get_sample(instance_id, sample_id) -> tuple[str, bool]:
@@ -106,35 +107,24 @@ class SetEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def majority_voting(args):
+def majority_voting(args, execution_results):
     all_pred = []
 
-    for instance_id in execution_results:
-        patch_keys = [
-            execution_results[instance_id][i]["normalized_patch"]
-            for i in range(args.num_samples)
-        ]
-        plausible = [
-            execution_results[instance_id][i]["plausible"]
-            for i in range(args.num_samples)
-        ]
-
-        raw_patches = [
-            execution_results[instance_id][i]["patch"]
-            for i in range(args.num_samples)
-            for i in range(args.num_samples)
-        ]
+    for instance_id, samples in execution_results.items():
+        patch_keys = [item["normalized_patch"] for item in samples]
+        plausibles = [item["plausible"] for item in samples]
+        raw_patches = [item["patch"] for item in samples]
 
         if args.plausible:
-            patch_ids = list(
+            patch_ids = [
                 i
-                for i in range(args.num_samples)
-                if patch_keys[i].strip() and plausible[i]
-            )
+                for i, (patch_key, plausible) in enumerate(zip(patch_keys, plausibles))
+                if patch_key.strip() and plausible
+            ]
         else:
-            patch_ids = list(
-                i for i in range(args.num_samples) if patch_keys[i].strip()
-            )
+            patch_ids = [
+                i for i, patch_key in enumerate(patch_keys) if patch_key.strip()
+            ]
 
         if not patch_ids:
             # just vote on all patches
@@ -142,8 +132,7 @@ def majority_voting(args):
                 vote = Counter()
                 first_appear_idx = dict()
                 valid_indices = []
-                for i in range(args.num_samples):
-                    sample = get_sample(instance_id, i)
+                for i, sample in enumerate(samples):
                     patch_key = sample["normalized_patch"]
                     if patch_key != "":
                         valid_indices.append(i)
@@ -158,7 +147,7 @@ def majority_voting(args):
                         -first_appear_idx[patch_keys[i]],
                     ),
                 )
-                patch = get_sample(instance_id, maj_selected_id)["patch"]
+                patch = samples[maj_selected_id]["patch"]
                 all_pred.append(
                     {
                         "model_name_or_path": "agentless",
@@ -179,7 +168,7 @@ def majority_voting(args):
         vote = Counter()
         first_appear_idx = dict()
         for i in patch_ids:
-            sample = get_sample(instance_id, i)
+            sample = samples[i]
             patch_key, patch = (
                 sample["normalized_patch"],
                 sample["patch"],
@@ -203,7 +192,7 @@ def majority_voting(args):
                 print(patch)
                 print("=" * 50)
 
-        sample = get_sample(instance_id, maj_selected_id)
+        sample = samples[maj_selected_id]
         all_pred.append(
             {
                 "model_name_or_path": "agentless",
@@ -250,9 +239,9 @@ def main():
     # first normalize
     normalize_patches(args)
     # then load results
-    _load_results(args)
+    execution_results = _load_results(args)
     # then rerank
-    majority_voting(args)
+    majority_voting(args, execution_results)
 
 
 if __name__ == "__main__":
