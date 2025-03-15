@@ -37,7 +37,7 @@ ENV PATH="/opt/conda/envs/agentless/bin:$PATH"
 COPY requirements.txt .
 
 # Initialize conda and install dependencies from the requirements.txt
-RUN "pip install --no-cache-dir -r requirements.txt"
+RUN pip install --no-cache-dir -r requirements.txt
 
 ENV PROJECT_FILE_LOC=/app/data/repo_structure
 
