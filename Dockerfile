@@ -39,7 +39,7 @@ COPY requirements.txt .
 # Initialize conda and install dependencies from the requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENV PROJECT_FILE_LOC=/app/data/repo_structure
+ENV PROJECT_FILE_LOC=/app/data/repo_structures
 
 # Copy rest of the files into the container
 COPY . /app/
