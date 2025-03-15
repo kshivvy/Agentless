@@ -13,6 +13,10 @@ RUN apt-get update
 # Install git (required for Agentless operations like cloning repos)
 RUN apt-get install -y git unzip curl
 
+# Git config is needed to run "git commit" during postprocessing.
+RUN git config --global user.email "johndoe@google.com" && \
+    git config --global user.name "John Doe"
+
 # Set the working directory inside the container
 WORKDIR /app
 
