@@ -53,7 +53,13 @@ def main():
     )
     args = parser.parse_args()
 
-    bulk_upload(args.bucket_name, args.source_dir, args.dest_dir, args.num_workers)
+    bulk_upload(
+        args.bucket_name,
+        args.source_dir,
+        # Always make the dest_dir ends with "/"
+        os.path.join(args.dest_dir, ""),
+        args.num_workers,
+    )
 
 
 if __name__ == "__main__":
