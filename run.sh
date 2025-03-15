@@ -113,11 +113,11 @@ python agentless/repair/rerank.py \
     --patch_folder="$RESULT_DIR/repair" \
     --num_samples=$REPAIR_SAMPLES \
     --deduplicate \
-    --plausible
+    --plausible \
+    --output_file="$RESULT_DIR/all_preds.jsonl"
 
 run_step 4 "Uploading results to Google Cloud Storage" \
 python agentless/gcs/upload_results.py \
     --source_dir="$RESULT_DIR" \
     --dest_dir="$DEST_DIR" \
-    --num_workers=$PARALLELISM \
-    --output_file="$RESULT_DIR/all_preds.jsonl"
+    --num_workers=$PARALLELISM
