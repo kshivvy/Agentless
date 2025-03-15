@@ -183,3 +183,5 @@ results/
 
 # Jupyter Notebooks
 *.ipynb
+
+.git
