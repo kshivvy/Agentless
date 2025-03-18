@@ -7,7 +7,7 @@ import os
 from difflib import unified_diff
 
 from datasets import load_dataset
-from tqdm.asyncio import tqdm
+import tqdm
 
 from agentless import data_types
 from agentless.util import models
@@ -327,7 +327,9 @@ async def repair(args, model: models.DecoderBase, executor):
         for i, pred_file in enumerate(pred_files):
             if "found_edit_locs" in loc and len(loc["found_edit_locs"]) > i:
                 file_to_edit_locs[pred_file] = loc["found_edit_locs"][i]
-        topn_content, file_loc_intervals = construct_topn_file_context(
+        pbar.total += 1
+        fut = executor.submit(
+            construct_topn_file_context,
             file_to_edit_locs,
             pred_files,
             file_contents,
@@ -339,6 +341,8 @@ async def repair(args, model: models.DecoderBase, executor):
             no_line_number=args.diff_format,
             sticky_scroll=args.sticky_scroll,
         )
+        topn_content, file_loc_intervals = await asyncio.wrap_future(fut)
+        pbar.update(1)
 
         if topn_content.strip() == "":
             logging.info(f"skipped since no files were localized")
@@ -378,24 +382,31 @@ async def repair(args, model: models.DecoderBase, executor):
                 max_new_tokens=1024,
                 temperature=0,
             )
+            pbar.update(1)
             return ts[0]
 
         async def sample_n(message: str, num_samples: int):
-            return await model.codegen_async(
+            result = await model.codegen_async(
                 message,
                 num_samples=num_samples,
                 max_new_tokens=1024,
                 temperature=0.8,
             )
+            pbar.update(1)
+            return result
 
         if args.mock:
             ts = [data_types.DUMMY_TRAJ for _ in range(args.max_samples)]
         else:
-            ts = [
-                await sample_greedy(message),
-                *(await sample_n(message, args.max_samples - 1)),
-            ]
-        for t in ts:
+            pbar.total += 2
+            first, rest = await asyncio.gather(
+                sample_greedy(message), sample_n(message, args.max_samples - 1)
+            )
+            ts = [first, *rest]
+
+        pbar.total += len(ts)
+
+        async def handle_traj(t):
             t["prompt"] = message
             traj.append(t)
             raw_output = t["response"]
@@ -410,6 +421,7 @@ async def repair(args, model: models.DecoderBase, executor):
                 diff_format=args.diff_format,
             )
             edited_file, new_content = await asyncio.wrap_future(fut)
+            pbar.update(1)
             if edited_file in file_contents:
                 prev_content = file_contents[edited_file]
                 prev_contents.append(prev_content)
@@ -417,7 +429,9 @@ async def repair(args, model: models.DecoderBase, executor):
                 file_names.append(edited_file)
 
             if new_content == "":
-                continue
+                return
+
+        await asyncio.gather(*(handle_traj(t) for t in ts))
 
         counts.append(args.max_samples)
         raw_outputs.append(raw_output)
@@ -434,8 +448,12 @@ async def repair(args, model: models.DecoderBase, executor):
             "file_names": file_names,
         }
 
+    pbar = tqdm.tqdm(desc="repair [task]", position=0, total=0)
     async for item in tqdm_utils.as_completed(
-        [handle_loc(loc) for loc in locs], total=len(locs), desc="repair"
+        [handle_loc(loc) for loc in locs],
+        total=len(locs),
+        desc="repair [outer]",
+        position=1,
     ):
         with open(args.output_file, "a") as f:
             f.write(json.dumps(item) + "\n")
@@ -473,8 +491,6 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
                 new_content, file_contents[edited_file]
             )
 
-            print(lint_success, prev_errors, errors, differ_by_empty_lines)
-
             if syntax_success and not differ_by_empty_lines:
                 git_diffs = raw_git_diffs
             else:
@@ -489,17 +505,17 @@ def post_process_raw_output(raw_output_text, file_contents, file_loc_intervals, 
                     lineterm="",
                 )
             )
-            print("Failed parsing diff!")
-            print("\n".join(diff))
+            logging.error("Failed parsing diff!")
+            logging.error("\n".join(diff))
     except Exception as e:
-        print(raw_output_text)
-        print(e)
+        logging.error(raw_output_text)
+        logging.error(e)
         raise
 
     return git_diffs, raw_git_diffs, content
 
 
-async def post_process_repair(args, executor, tqdm_desc_suffix: str = ""):
+async def post_process_repair(args, executor):
     """
     apply some diff formatting.
     """
@@ -590,7 +606,8 @@ async def post_process_repair(args, executor, tqdm_desc_suffix: str = ""):
     async for item in tqdm_utils.as_completed(
         [handle_raw_output_async(raw_output) for raw_output in raw_outputs],
         total=len(raw_outputs),
-        desc="post_process_repair" + tqdm_desc_suffix,
+        position=0,
+        desc="post_process_repair",
     ):
         with open(args.output_file, "a") as f:
             f.write(json.dumps(item) + "\n")
@@ -675,7 +692,12 @@ async def main():
             elif args.gen_and_process:
                 await repair(args, model, executor)
                 args.raw_output_file = args.output_file
-                for i in range(args.max_samples):
+                for i in tqdm.tqdm(
+                    range(args.max_samples),
+                    position=1,
+                    desc="post_process_repair [outer]",
+                    total=args.max_samples,
+                ):
                     args.output_file = args.raw_output_file.replace(
                         ".jsonl", f"_{i}_processed.jsonl"
                     )
@@ -683,7 +705,6 @@ async def main():
                     await post_process_repair(
                         args,
                         executor,
-                        tqdm_desc_suffix=f" [{i + 1} / {args.max_samples}]",
                     )
             else:
                 await repair(args, model, executor)

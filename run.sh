@@ -30,6 +30,8 @@ fi
 CHECKPOINT_FILE="$RESULT_DIR/checkpoint.txt"
 PROGRESS_LOG="$RESULT_DIR/progress.log"
 CURRENT_STEP=0
+# Suppress noisy gRPC INFO logging.
+export GRPC_VERBOSITY=ERROR
 
 echo MODEL=$MODEL
 echo TOPIC_ID=$TOPIC_ID

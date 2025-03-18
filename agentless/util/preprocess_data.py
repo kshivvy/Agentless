@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 
 from agentless.util.parse_global_var import parse_global_var_from_code
 from get_repo_structure.get_repo_structure import (
@@ -151,7 +152,7 @@ def transfer_arb_locs_to_locs(
                 ]
 
                 if len(relevant_class) == 0:
-                    print(f"{loc} class could not be found")
+                    logging.info(f"{loc} class could not be found")
                 else:
                     line_loc.append(
                         (relevant_class[0]["start_line"], relevant_class[0]["end_line"])
@@ -173,7 +174,7 @@ def transfer_arb_locs_to_locs(
                         if clazz["file"] == pred_file and clazz["name"] == class_name
                     ]
                     if len(relevant_class) == 0:
-                        print(f"{class_name} class could not be found")
+                        logging.info(f"{class_name} class could not be found")
                     else:
                         relevant_method = [
                             method
@@ -181,7 +182,7 @@ def transfer_arb_locs_to_locs(
                             if method["name"] == method_name
                         ]
                         if len(relevant_method) == 0:
-                            print(f"{full_loc} method could not be found")
+                            logging.info(f"{full_loc} method could not be found")
                         else:
                             line_loc.append(
                                 (
@@ -197,7 +198,7 @@ def transfer_arb_locs_to_locs(
                         if function["file"] == pred_file and function["name"] == loc
                     ]
                     if len(relevant_function) == 0:
-                        print(f"{loc} function could not be found")
+                        logging.info(f"{loc} function could not be found")
                         if current_class_name != "":
                             # check if its a method
                             relevant_class = [
@@ -212,7 +213,7 @@ def transfer_arb_locs_to_locs(
                                 if method["name"] == loc
                             ]
                             if len(relevant_method) == 0:
-                                print(f"{loc} method could not be found")
+                                logging.info(f"{loc} method could not be found")
                                 # print([method for method in relevant_class[0]['methods']])
                                 #
                                 # for file_content in files:

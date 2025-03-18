@@ -38,7 +38,13 @@ def check_code_differ_by_just_empty_lines(code, prev_code) -> bool:
 
 
 def subprocess_run(shell_cmd, check=True):
-    return subprocess.run(shell_cmd, shell=True, check=check, capture_output=True)
+    return subprocess.run(
+        shell_cmd,
+        shell=True,
+        check=check,
+        capture_output=True,
+        env={"GRPC_VERBOSITY": "ERROR"},
+    )
 
 
 def lint_code(repo_playground, temp_name, code, prev_code="") -> tuple[bool, set, set]:
@@ -490,7 +496,7 @@ def parse_diff_edit_commands(
                         break
 
                 if original == "...":
-                    print("cannot find suitable location")
+                    logging.info("cannot find suitable location")
 
         # dot dot dot with something else in original, then its safe to replace
         if original.startswith("...\n") and len(original) > 4:
@@ -504,7 +510,7 @@ def parse_diff_edit_commands(
             content = content.replace(original, replace)
             replaced = True
         else:
-            print("not replaced")
+            logging.info("not replaced")
         return content
     # let's first make sure the intervals are sorted
     file_loc_intervals.sort()
@@ -564,7 +570,7 @@ def parse_diff_edit_commands(
         )
 
     if not replaced:
-        print("not replaced")
+        logging.info("not replaced")
 
     return content
 
