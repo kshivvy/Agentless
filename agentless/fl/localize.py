@@ -349,7 +349,9 @@ async def main():
         subscription_id=args.subscription_id,
         max_concurrent_request=args.parallelism,
     ) as pub_sub_mgr:
-        model = models.PubSubDecoder(name=args.model, pub_sub_mgr=pub_sub_mgr)
+        model = models.PubSubDecoder(
+            name=args.model, pub_sub_mgr=pub_sub_mgr, max_new_tokens=300
+        )
 
         if args.merge:
             merge(args)

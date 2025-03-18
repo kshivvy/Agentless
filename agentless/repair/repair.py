@@ -374,6 +374,7 @@ async def repair(args, model: models.DecoderBase, executor):
         async def sample_greedy(message: str):
             ts = await model.codegen_async(
                 message,
+                num_samples=1,
                 max_new_tokens=1024,
                 temperature=0,
             )

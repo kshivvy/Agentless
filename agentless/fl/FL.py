@@ -263,7 +263,11 @@ Return just the locations.
             }
             return [], {"raw_output_loc": ""}, traj
 
-        trajs = await self._model.codegen_async(message)
+        trajs = await self._model.codegen_async(
+            message,
+            temperature=0,
+            num_samples=1,
+        )
         traj = trajs[0]
         traj["prompt"] = message
         raw_output = traj["response"]
@@ -342,6 +346,7 @@ Return just the locations.
         trajs = await self._model.codegen_async(
             message,
             temperature=0,
+            num_samples=1,
         )
         traj = trajs[0]
         traj["prompt"] = message
@@ -404,6 +409,7 @@ Return just the locations.
         trajs = await self._model.codegen_async(
             message,
             temperature=0,
+            num_samples=1,
         )
         traj = trajs[0]
         traj["prompt"] = message

@@ -161,8 +161,6 @@ class PubSubDecoder(DecoderBase):
                 "kernel_id": self.name,
                 "max_decoding_steps": str(max_new_tokens or self.max_new_tokens),
                 "temperature": str(temperature or self.temperature),
-                "top_p": "0.95",
-                "top_k": "64",
             },
         )
         return {
