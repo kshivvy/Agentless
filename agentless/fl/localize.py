@@ -200,6 +200,12 @@ async def localize(args: Args, model: models.DecoderBase):
     swe_bench_data: Iterable[data_types.Bug] = load_dataset(
         args.dataset_name, split=args.split_name
     )
+    logging.info(
+        "Succesfully loaded %s:%s with %d items.",
+        args.dataset_name,
+        args.split_name,
+        len(swe_bench_data),
+    )
     start_file_locs = load_jsonl(args.start_file) if args.start_file else None
     with futures.ThreadPoolExecutor(max_workers=args.parallelism) as executor:
         locs = [
