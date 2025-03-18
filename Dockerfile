@@ -8,7 +8,7 @@ RUN apt-get update && \
 
 # Download the precomputed data from google cloud.
 RUN mkdir -p /app/data
-RUN gsutil cp gs://agentless-precomputed/swebench_repo_structure.zip /tmp/downloaded.zip
+RUN gsutil cp gs://agentless-precomputed/repo_structure.zip /tmp/downloaded.zip
 RUN unzip /tmp/downloaded.zip -d /app/data
 RUN rm /tmp/downloaded.zip
 
