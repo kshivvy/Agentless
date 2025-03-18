@@ -38,13 +38,18 @@ def check_code_differ_by_just_empty_lines(code, prev_code) -> bool:
 
 
 def subprocess_run(shell_cmd, check=True):
-    return subprocess.run(
-        shell_cmd,
-        shell=True,
-        check=check,
-        capture_output=True,
-        env={"GRPC_VERBOSITY": "ERROR"},
-    )
+    try:
+        subprocess.run(
+            shell_cmd,
+            shell=True,
+            check=check,
+            capture_output=True,
+            env={"GRPC_VERBOSITY": "ERROR"},
+        )
+    except subprocess.CalledProcessError as e:
+        print("STDOUT:", e.stdout)
+        print("STDERR:", e.stderr)
+        raise
 
 
 def lint_code(repo_playground, temp_name, code, prev_code="") -> tuple[bool, set, set]:
