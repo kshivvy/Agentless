@@ -2,6 +2,7 @@ import asyncio
 import argparse
 from concurrent import futures
 import json
+import functools
 import logging
 import os
 from difflib import unified_diff
@@ -10,6 +11,7 @@ from datasets import load_dataset
 import tqdm
 
 from agentless import data_types
+from agentless.util import asyncio_utils
 from agentless.util import models
 from agentless.util import tqdm_utils
 from agentless.pub_sub import manager
@@ -266,6 +268,9 @@ async def repair(args, model: models.DecoderBase, executor):
         for loc in locs:
             f.write(json.dumps(loc) + "\n")
 
+    limiter = asyncio_utils.make_limiter(args.max_concurrency)
+
+    @limiter
     async def handle_loc(loc: data_types.Localization):
         instance_id = loc["instance_id"]
         for o in prev_o:
@@ -662,6 +667,12 @@ async def main():
         choices=["princeton-nlp/SWE-bench_Verified", "princeton-nlp/SWE-bench_Lite"],
     )
     parser.add_argument("--split_name", type=str, default="test")
+    parser.add_argument(
+        "--max_concurrency",
+        type=int,
+        default=50,
+        help="Limit max concurrent repair sessions in order to avoid large memory consumption.",
+    )
 
     args = parser.parse_args()
 
@@ -692,6 +703,8 @@ async def main():
             elif args.gen_and_process:
                 await repair(args, model, executor)
                 args.raw_output_file = args.output_file
+                limiter = asyncio_utils.make_limiter(args.max_concurrency)
+                post_process_repair_limited = limiter(post_process_repair)
                 for i in tqdm.tqdm(
                     range(args.max_samples),
                     position=1,
@@ -702,7 +715,7 @@ async def main():
                         ".jsonl", f"_{i}_processed.jsonl"
                     )
                     args.select_id = i
-                    await post_process_repair(
+                    await post_process_repair_limited(
                         args,
                         executor,
                     )

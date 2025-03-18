@@ -13,6 +13,7 @@ import tqdm
 
 from agentless import data_types
 from agentless.fl.FL import LLMFL
+from agentless.util import asyncio_utils
 from agentless.util import models
 from agentless.util import tqdm_utils
 from agentless.util.preprocess_data import (
@@ -57,6 +58,7 @@ class Args:
     subscription_id: str = manager.DEFAULT_SUBSCRIPTION_ID
     dataset_name: str = "princeton-nlp/SWE-bench_Verified"
     split_name: str = "test"
+    max_concurrency: int = 50
 
 
 def get_repo_structure(instance_id: str) -> dict[str, Any]:
@@ -66,6 +68,9 @@ def get_repo_structure(instance_id: str) -> dict[str, Any]:
 
 
 async def localize(args: Args, model: models.DecoderBase):
+    limiter = asyncio_utils.make_limiter(args.max_concurrency)
+
+    @limiter
     async def localize_instance(
         bug: data_types.Bug,
         args: Args,
@@ -331,6 +336,7 @@ async def main():
         choices=["princeton-nlp/SWE-bench_Verified", "princeton-nlp/SWE-bench_Lite"],
     )
     parser.add_argument("--split_name", type=str, default="test")
+    parser.add_argument("--max_concurrency", type=int, default=50)
 
     args = parser.parse_args()
 

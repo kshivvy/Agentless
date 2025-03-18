@@ -11,6 +11,7 @@ TOPIC_ID="${TOPIC_ID:-$USER-request}"
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-response-sub}"
 
 PARALLELISM="${PARALLELISM:-32}"
+MAX_CONCURRENCY="${MAX_CONCURRENCY:-50}"
 DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
 CONTEXT_WINDOW="${CONTEXT_WINDOW:-10}"
 NUM_SAMPLES="${NUM_SAMPLES:-20}"
@@ -118,7 +119,8 @@ python agentless/repair/repair.py \
     --model=$MODEL \
     --parallelism=$PARALLELISM \
     --dataset_name=$DATASET_NAME \
-    --split_name=$SPLIT_NAME
+    --split_name=$SPLIT_NAME \
+    --max_concurrency=$MAX_CONCURRENCY
 
 run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \
