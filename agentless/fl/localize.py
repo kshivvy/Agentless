@@ -9,6 +9,7 @@ from concurrent import futures
 from typing import Any
 
 from datasets import load_dataset
+import tqdm
 
 from agentless import data_types
 from agentless.fl.FL import LLMFL
@@ -103,9 +104,11 @@ async def localize(args: Args, model: models.DecoderBase):
                 problem_statement,
                 model,
             )
+            pbar.total += 1
             found_files, additional_artifact_loc_file, file_traj = await fl.localize(
                 mock=args.mock
             )
+            pbar.update(1)
         else:
             # assume start_file is provided
             for locs in start_file_locs:
@@ -138,6 +141,7 @@ async def localize(args: Args, model: models.DecoderBase):
                 related_loc_traj = {}
 
                 if args.compress:
+                    pbar.total += 1
                     (
                         found_related_locs,
                         additional_artifact_loc_related,
@@ -145,6 +149,7 @@ async def localize(args: Args, model: models.DecoderBase):
                     ) = await fl.localize_function_from_compressed_files(
                         file_names=pred_files, mock=args.mock, executor=executor
                     )
+                    pbar.update(1)
                     additional_artifact_loc_related = [additional_artifact_loc_related]
                 else:
                     assert False, "Not implemented yet."
@@ -160,6 +165,7 @@ async def localize(args: Args, model: models.DecoderBase):
                 model,
             )
             coarse_found_locs = {}
+            pbar.total += 1
             for i, pred_file in enumerate(pred_files):
                 if len(found_related_locs) > i:
                     coarse_found_locs[pred_file] = found_related_locs[i]
@@ -179,6 +185,7 @@ async def localize(args: Args, model: models.DecoderBase):
                 num_samples=args.num_samples,
                 executor=executor,
             )
+            pbar.update(1)
 
             additional_artifact_loc_edit_location = [
                 additional_artifact_loc_edit_location
@@ -219,8 +226,9 @@ async def localize(args: Args, model: models.DecoderBase):
             )
             for bug in swe_bench_data
         ]
+        pbar = tqdm.tqdm(desc="localize [tasks]", position=0, total=0)
         async for loc in tqdm_utils.as_completed(
-            locs, total=len(locs), desc="localize"
+            locs, total=len(locs), desc="localize [outer]", position=1
         ):
             with open(args.output_file, "a") as f:
                 f.write(json.dumps(loc) + "\n")
