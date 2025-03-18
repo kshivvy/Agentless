@@ -1,5 +1,21 @@
+FROM google/cloud-sdk:slim AS gs_download
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download the precomputed data from google cloud.
+RUN mkdir -p /app/data
+RUN gsutil cp gs://agentless-precomputed/swebench_repo_structure.zip /tmp/downloaded.zip
+RUN unzip /tmp/downloaded.zip -d /app/data
+RUN rm /tmp/downloaded.zip
+
 # Use Miniconda as the base image
-FROM continuumio/miniconda3:latest
+FROM continuumio/miniconda3:latest AS app
+
+COPY --from=gs_download /app/data /app/data
 
 # Disable Python output buffering so logs are printed in real-time
 ENV PYTHONUNBUFFERED=1
@@ -8,10 +24,9 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Update the package index so we can install the latest versions
-RUN apt-get update
-
-# Install git (required for Agentless operations like cloning repos)
-RUN apt-get install -y git unzip curl
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
 
 # Git config is needed to run "git commit" during postprocessing.
 RUN git config --global user.email "johndoe@google.com" && \
@@ -19,11 +34,6 @@ RUN git config --global user.email "johndoe@google.com" && \
 
 # Set the working directory inside the container
 WORKDIR /app
-
-# Download cached files.
-RUN mkdir -p /app/data && \
-    curl -o /app/data/swebench_lite_repo_structure.zip -L https://github.com/OpenAutoCoder/Agentless/releases/download/v0.1.0/swebench_lite_repo_structure.zip && \
-    unzip /app/data/swebench_lite_repo_structure.zip -d /app/data
 
 # Set PYTHONPATH to include the /app directory for module imports
 ENV PYTHONPATH="/app"
@@ -40,7 +50,7 @@ COPY requirements.txt .
 # Initialize conda and install dependencies from the requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENV PROJECT_FILE_LOC=/app/data/repo_structures
+ENV PROJECT_FILE_LOC=/app/data/repo_structure/repo_structures
 
 # Copy rest of the files into the container
 COPY . /app/
