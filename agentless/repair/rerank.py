@@ -215,35 +215,40 @@ def majority_voting(args, execution_results):
             f.write(json.dumps(pred) + "\n")
 
 
+def _normalize_patch_instance(args, output_folder, i):
+    if os.path.exists(output_folder / f"output_{i}_normalized.jsonl"):
+        # skip
+        return
+    patches = load_jsonl(output_folder / f"output_{i}_processed.jsonl")
+    for d in patches:
+        instance_id = d["instance_id"]
+        patch = d["model_patch"]
+        original_file_content = d["original_file_content"]
+        normalized_patch = normalize_patch(
+            instance_id, patch, original_file_content, args.temp_folder
+        )
+        d["normalized_patch"] = normalized_patch
+    with open(output_folder / f"output_{i}_normalized.jsonl", "w") as f:
+        for d in patches:
+            f.write(json.dumps(d) + "\n")
+
+
 def normalize_patches(args):
     output_folder = Path(args.patch_folder)
     selected_ids = list(range(args.num_samples))
 
-    def handle_selected_id(i):
-        if os.path.exists(output_folder / f"output_{i}_normalized.jsonl"):
-            # skip
-            return
-        patches = load_jsonl(output_folder / f"output_{i}_processed.jsonl")
-        for d in patches:
-            instance_id = d["instance_id"]
-            patch = d["model_patch"]
-            original_file_content = d["original_file_content"]
-            normalized_patch = normalize_patch(
-                instance_id, patch, original_file_content, args.temp_folder
-            )
-            d["normalized_patch"] = normalized_patch
-        with open(output_folder / f"output_{i}_normalized.jsonl", "w") as f:
-            for d in patches:
-                f.write(json.dumps(d) + "\n")
-
     with futures.ProcessPoolExecutor(max_workers=args.parallelism) as executor:
-        futs = [executor.submit(handle_selected_id, i) for i in selected_ids]
+        futs = [
+            executor.submit(_normalize_patch_instance, args, output_folder, i)
+            for i in selected_ids
+        ]
         for fut in tqdm.tqdm(
             futures.as_completed(futs),
             total=args.num_samples,
             desc="normalize_patches",
         ):
             fut.result()
+
 
 def main():
     parser = argparse.ArgumentParser()
