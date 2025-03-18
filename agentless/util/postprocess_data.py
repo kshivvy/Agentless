@@ -121,6 +121,9 @@ def fake_git_repo(repo_playground, file_path, old_content, new_content) -> str:
     # create playground
     os.makedirs(repo_playground)
 
+    # Establish GitHub user email and name information.
+    subprocess_run(f"git config --global user.email \"johndoe@google.com\" &&  git config --global user.name \"John Doe\"")
+
     # create a fake git repo
     subprocess_run(f"cd {repo_playground} && git init")
 
