@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+from concurrent import futures
 from collections import Counter, OrderedDict
 from pathlib import Path
 
@@ -217,14 +218,11 @@ def majority_voting(args, execution_results):
 def normalize_patches(args):
     output_folder = Path(args.patch_folder)
     selected_ids = list(range(args.num_samples))
-    for i in tqdm.tqdm(
-        selected_ids,
-        total=args.num_samples,
-        desc="normalize_patches",
-    ):
+
+    def handle_selected_id(i):
         if os.path.exists(output_folder / f"output_{i}_normalized.jsonl"):
             # skip
-            continue
+            return
         patches = load_jsonl(output_folder / f"output_{i}_processed.jsonl")
         for d in patches:
             instance_id = d["instance_id"]
@@ -238,6 +236,14 @@ def normalize_patches(args):
             for d in patches:
                 f.write(json.dumps(d) + "\n")
 
+    with futures.ProcessPoolExecutor(max_workers=args.parallelism) as executor:
+        futs = [executor.submit(handle_selected_id, i) for i in selected_ids]
+        for fut in tqdm.tqdm(
+            futures.as_completed(futs),
+            total=args.num_samples,
+            desc="normalize_patches",
+        ):
+            fut.result()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -248,6 +254,7 @@ def main():
     parser.add_argument("--deduplicate", action="store_true")
     parser.add_argument("--plausible", action="store_true")
     parser.add_argument("--output_file", type=str, required=True)
+    parser.add_argument("--parallelism", type=int, default=16)
     args = parser.parse_args()
 
     # first normalize

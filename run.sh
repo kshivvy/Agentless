@@ -127,6 +127,7 @@ python agentless/repair/rerank.py \
     --num_samples=$NUM_SAMPLES \
     --deduplicate \
     --plausible \
+    --parallelism=$PARALLELISM \
     --output_file="$RESULT_DIR/all_preds.jsonl"
 
 run_step 4 "Uploading results to Google Cloud Storage" \
