@@ -100,7 +100,8 @@ python agentless/fl/localize.py \
     --model=$MODEL \
     --parallelism=$PARALLELISM \
     --dataset_name=$DATASET_NAME \
-    --split_name=$SPLIT_NAME
+    --split_name=$SPLIT_NAME \
+    --max_concurrency=$MAX_CONCURRENCY
 
 run_step 2 "Running repair" \
 python agentless/repair/repair.py \
