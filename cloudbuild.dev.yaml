@@ -12,4 +12,4 @@ steps:
 options:
   machineType: 'E2_HIGHCPU_32'
 images:
-  - 'us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v0.1.0'
+  - 'us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v0.1.0-dev'
