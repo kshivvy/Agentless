@@ -251,7 +251,7 @@ async def repair(args, model: models.DecoderBase, executor):
     with open(f"{args.output_folder}/args.json", "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    swe_bench_data = load_dataset("princeton-nlp/SWE-bench_Lite", split="test")
+    swe_bench_data = load_dataset(args.dataset_name, split=args.split_name)
 
     locs = load_jsonl(args.loc_file)
 
@@ -638,6 +638,13 @@ async def main():
     parser.add_argument(
         "--subscription_id", type=str, default=manager.DEFAULT_SUBSCRIPTION_ID
     )
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default="princeton-nlp/SWE-bench_Verified",
+        choices=["princeton-nlp/SWE-bench_Verified", "princeton-nlp/SWE-bench_Lite"],
+    )
+    parser.add_argument("--split_name", type=str, default="test")
 
     args = parser.parse_args()
 

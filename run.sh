@@ -15,6 +15,8 @@ DEST_DIR="${DEST_DIR:-$USER-$(date +"%y%m%d-%H%M%S")}"
 CONTEXT_WINDOW="${CONTEXT_WINDOW:-10}"
 NUM_SAMPLES="${NUM_SAMPLES:-20}"
 TRUNCATE="${TRUNCATE:-0}"
+DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Verified}"
+SPLIT_NAME="${SPLIT_NAME:-test}"
 TEMP_DIR="${TEMP_DIR:-/tmp}"
 
 if [ -z "$RESULT_DIR" ]; then
@@ -94,7 +96,8 @@ python agentless/fl/localize.py \
     --subscription_id=$SUBSCRIPTION_ID \
     --model=$MODEL \
     --parallelism=$PARALLELISM \
-    --truncate=$TRUNCATE
+    --dataset_name=$DATASET_NAME \
+    --split_name=$SPLIT_NAME
 
 run_step 2 "Running repair" \
 python agentless/repair/repair.py \
@@ -111,7 +114,9 @@ python agentless/repair/repair.py \
     --topic_id=$TOPIC_ID \
     --subscription_id=$SUBSCRIPTION_ID \
     --model=$MODEL \
-    --parallelism=$PARALLELISM
+    --parallelism=$PARALLELISM \
+    --dataset_name=$DATASET_NAME \
+    --split_name=$SPLIT_NAME
 
 run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \
