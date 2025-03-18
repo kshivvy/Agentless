@@ -21,6 +21,12 @@ repo_to_top_folder = {
     "psf/requests": "requests",
     "pylint-dev/pylint": "pylint",
     "pallets/flask": "flask",
+    "pvlib/pvlib-python": "pvlib",
+    "marshmallow-code/marshmallow": "marshmallow",
+    "pydicom/pydicom": "pydicom",
+    "sqlfluff/sqlfluff": "sqlfluff",
+    "pylint-dev/astroid": "astroid",
+    "pyvista/pyvista": "pyvista",
 }
 
 

@@ -20,7 +20,11 @@ def _load_results(args):
     interval = (0, args.num_samples - 1)
     root = Path(args.patch_folder)
 
-    for i in range(interval[0], interval[1] + 1):
+    for i in tqdm.tqdm(
+        range(interval[0], interval[1] + 1),
+        desc="load_results",
+        total=args.num_samples,
+    ):
         patches = load_jsonl(root / f"output_{i}_normalized.jsonl")
         print(
             f"Loaded {len(patches)} patches from {root / f'output_{i}_normalized.jsonl'}"
@@ -110,7 +114,9 @@ class SetEncoder(json.JSONEncoder):
 def majority_voting(args, execution_results):
     all_pred = []
 
-    for instance_id, samples in tqdm(list(execution_results.items())):
+    for instance_id, samples in tqdm(
+        list(execution_results.items()), desc="majority_voting"
+    ):
         patch_keys = [item["normalized_patch"] for item in samples]
         plausibles = [item["plausible"] for item in samples]
         raw_patches = [item["patch"] for item in samples]
@@ -211,7 +217,11 @@ def majority_voting(args, execution_results):
 def normalize_patches(args):
     output_folder = Path(args.patch_folder)
     selected_ids = list(range(args.num_samples))
-    for i in selected_ids:
+    for i in tqdm.tqdm(
+        selected_ids,
+        total=args.num_samples,
+        desc="normalize_patches",
+    ):
         if os.path.exists(output_folder / f"output_{i}_normalized.jsonl"):
             # skip
             continue
