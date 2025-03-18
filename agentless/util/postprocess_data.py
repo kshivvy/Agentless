@@ -39,20 +39,21 @@ def check_code_differ_by_just_empty_lines(code, prev_code) -> bool:
 
 def subprocess_run(shell_cmd, check=True):
     try:
-        subprocess.run(
+        return subprocess.run(
             shell_cmd,
             shell=True,
             check=check,
             capture_output=True,
             env={
+                **dict(os.environ),
                 "GRPC_VERBOSITY": "ERROR",
-                "GIT_AUTHOR_NAME": "John Doe",
-                "GIT_AUTHOR_EMAIL": "johndoe@google.com",
             },
         )
     except subprocess.CalledProcessError as e:
-        print("STDOUT:", e.stdout)
-        print("STDERR:", e.stderr)
+        if e.stdout:
+            print("STDOUT:", e.stdout.decode("utf-8"))
+        if e.stderr:
+            print("STDERR:", e.stderr.decode("utf-8"))
         raise
 
 
@@ -122,7 +123,7 @@ def fake_git_repo(repo_playground, file_path, old_content, new_content) -> str:
     os.makedirs(repo_playground)
 
     # Establish GitHub user email and name information.
-    subprocess_run(f"git config --global user.email \"johndoe@google.com\" &&  git config --global user.name \"John Doe\"")
+    # subprocess_run(f"git config --global user.email \"johndoe@google.com\" &&  git config --global user.name \"John Doe\"")
 
     # create a fake git repo
     subprocess_run(f"cd {repo_playground} && git init")
