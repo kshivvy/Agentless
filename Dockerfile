@@ -8,7 +8,7 @@ RUN apt-get update && \
 
 # Download the precomputed data from google cloud.
 RUN mkdir -p /app/data
-RUN gsutil cp gs://agentless-precomputed/repo_structure.zip /tmp/downloaded.zip
+RUN gsutil cp gs://agentless-precomputed/repo_structure_swebench-all.zip /tmp/downloaded.zip
 RUN unzip /tmp/downloaded.zip -d /app/data
 RUN rm /tmp/downloaded.zip
 
@@ -50,7 +50,7 @@ COPY requirements.txt .
 # Initialize conda and install dependencies from the requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENV PROJECT_FILE_LOC=/app/data/repo_structure/repo_structures
+ENV PROJECT_FILE_LOC=/app/data/repo_structures
 
 # Copy rest of the files into the container
 COPY . /app/
