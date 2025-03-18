@@ -128,7 +128,9 @@ def majority_voting(args, execution_results):
 
         if not patch_ids:
             # just vote on all patches
-            if not all([x.strip() == "" for x in raw_patches]):
+            if any(x.strip() for x in raw_patches) and any(
+                x.strip() for x in patch_keys
+            ):
                 vote = Counter()
                 first_appear_idx = dict()
                 valid_indices = []
