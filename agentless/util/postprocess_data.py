@@ -44,7 +44,11 @@ def subprocess_run(shell_cmd, check=True):
             shell=True,
             check=check,
             capture_output=True,
-            env={"GRPC_VERBOSITY": "ERROR"},
+            env={
+                "GRPC_VERBOSITY": "ERROR",
+                "GIT_AUTHOR_NAME": "John Doe",
+                "GIT_AUTHOR_EMAIL": "johndoe@google.com",
+            },
         )
     except subprocess.CalledProcessError as e:
         print("STDOUT:", e.stdout)
