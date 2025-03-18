@@ -5,7 +5,7 @@ import os
 from collections import Counter, OrderedDict
 from pathlib import Path
 
-from tqdm import tqdm
+import tqdm
 
 from agentless.util.postprocess_data import extract_python_blocks, normalize_patch
 from agentless.util.utils import load_json, load_jsonl
@@ -114,7 +114,7 @@ class SetEncoder(json.JSONEncoder):
 def majority_voting(args, execution_results):
     all_pred = []
 
-    for instance_id, samples in tqdm(
+    for instance_id, samples in tqdm.tqdm(
         list(execution_results.items()), desc="majority_voting"
     ):
         patch_keys = [item["normalized_patch"] for item in samples]
