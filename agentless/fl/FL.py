@@ -6,6 +6,7 @@ from typing import TypedDict
 
 from agentless import data_types
 from agentless.repair.repair import construct_topn_file_context
+from agentless.util import asyncio_utils
 from agentless.util.compress_file import get_skeleton
 from agentless.util import models
 from agentless.util.postprocess_data import extract_code_blocks, extract_locs_for_files
@@ -368,11 +369,7 @@ Return just the locations.
             request_chatgpt_engine,
         )
 
-        async def get_skeleton_async(code):
-            await asyncio.get_running_loop().run_in_executor(
-                executor, get_skeleton, code
-            )
-
+        get_skeleton_async = asyncio_utils.make_async(get_skeleton, executor)
         file_contents = get_repo_files(self.structure, file_names)
         skeletons = await asyncio.gather(
             *[get_skeleton_async(code) for code in file_contents.values()]
@@ -451,19 +448,19 @@ Return just the locations.
         )
 
         file_contents = get_repo_files(self.structure, file_names)
-        topn_content, file_loc_intervals = await asyncio.wrap_future(
-            executor.submit(
-                construct_topn_file_context,
-                coarse_locs,
-                file_names,
-                file_contents,
-                self.structure,
-                context_window=context_window,
-                loc_interval=True,
-                add_space=add_space,
-                sticky_scroll=sticky_scroll,
-                no_line_number=no_line_number,
-            )
+        construct_topn_file_context_async = asyncio_utils.make_async(
+            construct_topn_file_context, executor
+        )
+        topn_content, file_loc_intervals = await construct_topn_file_context_async(
+            coarse_locs,
+            file_names,
+            file_contents,
+            self.structure,
+            context_window=context_window,
+            loc_interval=True,
+            add_space=add_space,
+            sticky_scroll=sticky_scroll,
+            no_line_number=no_line_number,
         )
         if no_line_number:
             template = self.obtain_relevant_code_combine_top_n_no_line_number_prompt

@@ -15,3 +15,12 @@ def make_limiter(max_concurreny: int):
         return wrapper
 
     return decorator
+
+
+def make_async(f, executor):
+    @functools.wraps(f)
+    async def f_async(*args, **kwargs):
+        fut = executor.submit(f, *args, **kwargs)
+        return await asyncio.wrap_future(fut)
+
+    return f_async
