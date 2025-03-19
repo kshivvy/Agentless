@@ -104,6 +104,11 @@ python agentless/fl/localize.py \
     --split_name=$SPLIT_NAME \
     --max_concurrency=$MAX_CONCURRENCY
 
+python agentless/gcs/upload_results.py \
+    --source_dir="$RESULT_DIR" \
+    --dest_dir="$DEST_DIR" \
+    --num_workers=$PARALLELISM
+
 run_step 2 "Running repair" \
 python agentless/repair/repair.py \
     --loc_file="$RESULT_DIR/location/loc_outputs.jsonl" \
@@ -124,6 +129,11 @@ python agentless/repair/repair.py \
     --split_name=$SPLIT_NAME \
     --max_concurrency=$MAX_CONCURRENCY
 
+python agentless/gcs/upload_results.py \
+    --source_dir="$RESULT_DIR" \
+    --dest_dir="$DEST_DIR" \
+    --num_workers=$PARALLELISM
+
 run_step 3 "Perform majority voting to select the final patch" \
 python agentless/repair/rerank.py \
     --patch_folder="$RESULT_DIR/repair" \
@@ -134,7 +144,6 @@ python agentless/repair/rerank.py \
     --parallelism=$PARALLELISM \
     --output_file="$RESULT_DIR/all_preds.jsonl"
 
-run_step 4 "Uploading results to Google Cloud Storage" \
 python agentless/gcs/upload_results.py \
     --source_dir="$RESULT_DIR" \
     --dest_dir="$DEST_DIR" \
