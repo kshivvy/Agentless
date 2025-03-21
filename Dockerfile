@@ -1,21 +1,5 @@
-FROM google/cloud-sdk:slim AS gs_download
-
-WORKDIR /app
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends unzip && \
-    rm -rf /var/lib/apt/lists/*
-
-# Download the precomputed data from google cloud.
-RUN mkdir -p /app/data
-RUN gsutil cp gs://agentless-precomputed/repo_structure_swebench-all.zip /tmp/downloaded.zip
-RUN unzip /tmp/downloaded.zip -d /app/data
-RUN rm /tmp/downloaded.zip
-
-# Use Miniconda as the base image
-FROM continuumio/miniconda3:latest AS app
-
-COPY --from=gs_download /app/data /app/data
+# Use Miniconda as the base image (2/12/2025)
+FROM continuumio/miniconda3:25.1.1-2
 
 # Disable Python output buffering so logs are printed in real-time
 ENV PYTHONUNBUFFERED=1
@@ -49,8 +33,6 @@ COPY requirements.txt .
 
 # Initialize conda and install dependencies from the requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
-ENV PROJECT_FILE_LOC=/app/data/repo_structures
 
 # Copy rest of the files into the container
 COPY . /app/
