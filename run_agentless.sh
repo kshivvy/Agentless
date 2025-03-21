@@ -85,11 +85,6 @@ upload_results_to_gcs() {
                                           --num_workers $NUM_WORKERS_UPLOAD
 }
 
-# Set up environment
-log_progress "Setting up environment..."
-# source /opt/conda/etc/profile.d/conda.sh
-# conda activate agentless
-
 # Set PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
