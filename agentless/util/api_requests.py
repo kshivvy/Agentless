@@ -200,10 +200,16 @@ def request_pub_sub_engine(
                 attributes=config,
             )
 
+            iterations = 1
             while ret is None and (time.time() - start_time) <= timeout:
                 ret = PUB_SUB_MANAGER.get(request_id)
-                # Sleep for 100 ms to avoid lock contention.
-                time.sleep(0.1)
+
+                # Sleep with exponential backoff to avoid lock contention.
+                sleep_duration = min(0.1 * 2**iterations, 5)
+                time.sleep(sleep_duration)
+
+                iterations += 1
+
             PUB_SUB_MANAGER.evict(request_id)
 
         except Exception as e:
