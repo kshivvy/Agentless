@@ -36,9 +36,9 @@ mkdir -p $RESULTS_DIR
 git config --global user.email "johndoe@google.com"
 git config --global user.name "John Doe"
 
-# Set gRPC verbosity level to WARNING to silence unnecessary logs
+# Set gRPC verbosity level to ERROR to silence unnecessary logs
 # about skipping fork() handlers due to other threads calling into gRPC.
-export GRPC_VERBOSITY=WARNING
+export GRPC_VERBOSITY=ERROR
 
 # Function to log progress
 log_progress() {
