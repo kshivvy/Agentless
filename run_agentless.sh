@@ -4,8 +4,8 @@
 MODEL="${MODEL:-als:bard}"
 
 # The dataset {verified, lite} and split {test, dev} to use.
-DATASET="${DATASET:-princeton-nlp/SWE-bench_Lite}"
-SPLIT="${SPLIT:-dev}"
+DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Lite}"
+SPLIT_NAME="${SPLIT_NAME:-dev}"
 
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-$USER-request}"
@@ -31,10 +31,6 @@ SKIP_EMBEDDING="${SKIP_EMBEDDING:-true}"
 
 # Create results directory
 mkdir -p $RESULTS_DIR
-
-# Git config is needed to run git commands during postprocessing.
-git config --global user.email "johndoe@google.com"
-git config --global user.name "John Doe"
 
 # Set gRPC verbosity level to ERROR to silence unnecessary logs
 # about skipping fork() handlers due to other threads calling into gRPC.
@@ -111,8 +107,8 @@ python agentless/fl/localize.py --file_level \\
                              --backend google-internal \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET \\
-                             --split $SPLIT
+                             --dataset $DATASET_NAME \\
+                             --split $SPLIT_NAME
 "
 
 upload_results_to_gcs
@@ -141,8 +137,8 @@ python agentless/fl/localize.py --related_level \\
                              --backend google-internal \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET \\
-                             --split $SPLIT
+                             --dataset $DATASET_NAME \\
+                             --split $SPLIT_NAME
 "
 
 upload_results_to_gcs
@@ -162,8 +158,8 @@ python agentless/fl/localize.py --fine_grain_line_level \\
                              --backend google-internal \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET \\
-                             --split $SPLIT
+                             --dataset $DATASET_NAME \\
+                             --split $SPLIT_NAME
 "
 
 upload_results_to_gcs
@@ -175,8 +171,8 @@ python agentless/fl/localize.py --merge \\
                              --top_n 3 \\
                              --num_samples 4 \\
                              --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \\
-                             --dataset $DATASET \\
-                             --split $SPLIT
+                             --dataset $DATASET_NAME \\
+                             --split $SPLIT_NAME
 "
 
 upload_results_to_gcs
@@ -212,8 +208,8 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
                                            --backend google-internal \
                                            --topic_id $TOPIC_ID \
                                            --subscription_id $SUBSCRIPTION_ID \
-                                           --dataset $DATASET \
-                                           --split $SPLIT
+                                           --dataset $DATASET_NAME \
+                                           --split $SPLIT_NAME
             # Save patch checkpoint
             echo $((i+1)) > "$PATCH_CHECKPOINT_FILE"
         else
