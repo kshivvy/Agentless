@@ -56,4 +56,4 @@ ENV PROJECT_FILE_LOC=/app/data/repo_structures
 COPY . /app/
 
 # Set the default command to run the shell script inside the Conda environment
-CMD ["bash", "/app/run.sh"]
+CMD ["bash", "/app/run_agentless.sh"]
