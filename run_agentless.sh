@@ -92,8 +92,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export OPENAI_API_KEY=$OPEN_AI_KEY
 
 # Use local repository structures instead of cloning from GitHub
-export PROJECT_FILE_LOC="$(pwd)/repo_structures"
-log_progress "Using local repository structures from $PROJECT_FILE_LOC"
+PROJECT_FILE_LOC="${PROJECT_FILE_LOC:-$(pwd)/repo_structures}"
 
 # Set the Google API key (already hardcoded in api_requests.py)
 export GOOGLE_API_KEY="AIzaSyBWcPVvWoR9pUOFzeRgsuW2tG-U-ZPiSbU"
