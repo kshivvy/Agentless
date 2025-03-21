@@ -8,8 +8,8 @@ DATASET="${DATASET:-princeton-nlp/SWE-bench_Lite}"
 SPLIT="${SPLIT:-dev}"
 
 # Pub/Sub topics
-TOPIC_ID="${TOPIC_ID:-kshivvy-request}"
-SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-kshivvy-response-sub}"
+TOPIC_ID="${TOPIC_ID:-$USER-request}"
+SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-response-sub}"
 
 # Google Compute Storage arguments
 DEST_DIR="${DEST_DIR:-agentless-v1.5/$USER}"
