@@ -223,7 +223,6 @@ class EmbeddingIndex(ABC):
             files, _, _ = get_full_file_paths_and_classes_and_functions(self.structure)
             filtered_files = self.filter_files(files)
             self.logger.info(f"Total number of considered files: {len(filtered_files)}")
-            print(f"Total number of considered files: {len(filtered_files)}")
             documents = []
 
             for file_content in files:
@@ -249,7 +248,6 @@ class EmbeddingIndex(ABC):
                 documents.extend(docs)
 
             self.logger.info(f"Total number of documents: {len(documents)}")
-            print(f"Total number of documents: {len(documents)}")
 
             if mock:
                 embed_model = MockEmbedding(
@@ -272,7 +270,6 @@ class EmbeddingIndex(ABC):
         self.logger.info(
             f"Embedding Tokens: {token_counter.total_embedding_token_count}"
         )
-        print(f"Embedding Tokens: {token_counter.total_embedding_token_count}")
 
         traj = {
             "usage": {"embedding_tokens": token_counter.total_embedding_token_count}
