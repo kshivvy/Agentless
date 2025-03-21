@@ -97,7 +97,7 @@ def retrieve(args):
     else:
         found_files = []
 
-    swe_bench_data = load_dataset(args.dataset, split="test")
+    swe_bench_data = load_dataset(args.dataset, split=args.split)
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
     if args.num_threads == 1:
@@ -147,7 +147,7 @@ def main():
     parser.add_argument("--chunk_overlap", type=int, default=0)
     parser.add_argument("--persist_dir", type=str)
     parser.add_argument("--target_id", type=str)
-    parser.add_argument("--mock", action="store_true")
+    parser.add_argument("--mock", type=bool, default=False)
     parser.add_argument(
         "--num_threads",
         type=int,
@@ -159,6 +159,12 @@ def main():
         type=str,
         default="princeton-nlp/SWE-bench_Lite",
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        choices=["test", "dev"]
     )
 
     args = parser.parse_args()

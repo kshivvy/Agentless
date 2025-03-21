@@ -150,7 +150,7 @@ def select_tests(args):
             test = json_obj["tests_passing_in_original_repo"]
             instance_test_dict[instance_id] = test
 
-    swe_bench_data = load_dataset(args.dataset, split="test")
+    swe_bench_data = load_dataset(args.dataset, split=args.split)
     instance_ids = (
         swe_bench_data["instance_id"]
         if args.instance_ids is None
@@ -197,6 +197,12 @@ def main():
         type=str,
         default="princeton-nlp/SWE-bench_Lite",
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        choices=["test", "dev"]
     )
     parser.add_argument(
         "--instance_ids",

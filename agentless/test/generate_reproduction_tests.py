@@ -250,7 +250,7 @@ def generate_tests(args):
     with open(f"{args.output_folder}/args.json", "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    swe_bench_data = load_dataset(args.dataset, split="test")
+    swe_bench_data = load_dataset(args.dataset, split=args.split)
     instances = swe_bench_data["instance_id"]
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
@@ -528,6 +528,12 @@ def main():
         type=str,
         default="princeton-nlp/SWE-bench_Lite",
         choices=["princeton-nlp/SWE-bench_Lite", "princeton-nlp/SWE-bench_Verified"],
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        choices=["test", "dev"]
     )
     parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
     parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
