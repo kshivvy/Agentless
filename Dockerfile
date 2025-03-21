@@ -1,5 +1,5 @@
 # Use Miniconda as the base image (2/12/2025)
-FROM continuumio/miniconda3:25.1.1-2
+FROM continuumio/miniconda3:25.1.1-2 AS app
 
 # Disable Python output buffering so logs are printed in real-time
 ENV PYTHONUNBUFFERED=1
