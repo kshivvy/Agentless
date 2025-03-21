@@ -93,9 +93,9 @@ class PubSubManager:
             except Exception as e:
                 print(f"Error in listen thread: {e}")
 
-    def get(self, request_id: str) -> str:
+    def get(self, request_id: str) -> str | None:
         with self.lock:
-            return self.cache.get(request_id, '')
+            return self.cache.get(request_id, None)
 
     def evict(self, request_id: str) -> str:
         with self.lock:
