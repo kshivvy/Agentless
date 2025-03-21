@@ -304,9 +304,9 @@ def normalize_patches(args):
             for d in patches:
                 instance_id = d["instance_id"]
                 patch = d["model_patch"]
-                original_file_content = d["original_file_content"]
-                new_file_content = d["new_file_content"]
-                edited_files = d["edited_files"]
+                original_file_content = d.get("original_file_content", [])
+                new_file_content = d.get("new_file_content", [])
+                edited_files = d.get("edited_files", [])
                 normalized_patch = normalize_patch(
                     instance_id,
                     patch,
