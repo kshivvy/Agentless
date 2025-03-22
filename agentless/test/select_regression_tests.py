@@ -214,10 +214,6 @@ def main():
 
     args = parser.parse_args()
 
-    assert (not "deepseek" in args.model) or (
-        args.backend == "deepseek"
-    ), "Must specify `--backend deepseek` if using a DeepSeek model"
-
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
     if not os.path.exists(os.path.join(args.output_folder, "select_test_logs")):

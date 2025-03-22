@@ -518,10 +518,6 @@ def check_valid_args(args):
         (not args.file_level) and (not args.start_file)
     ), "Must use either file_level or start_file"
 
-    assert (not "deepseek" in args.model) or (
-        args.backend == "deepseek"
-    ), "Must specify `--backend deepseek` if using a DeepSeek model"
-
 
 def main():
     parser = argparse.ArgumentParser()

@@ -794,10 +794,6 @@ def main():
     manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
     manager.PUB_SUB_MANAGER.start_listening()
 
-    assert (not "deepseek" in args.model) or (
-        args.backend == "deepseek"
-    ), "Must specify `--backend deepseek` if using a DeepSeek model"
-
     # diff_format and str_replace_format cannot be both True
     assert not (
         args.diff_format and args.str_replace_format
