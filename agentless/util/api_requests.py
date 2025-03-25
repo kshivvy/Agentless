@@ -183,7 +183,7 @@ def create_pub_sub_config(
 
 
 def request_pub_sub_engine(
-    config, logger, max_retries=40, timeout=500, prompt_cache=False
+    config, logger, max_retries=40, timeout=3600, prompt_cache=False
 ):
     ret = None
     retries = 0
@@ -209,6 +209,12 @@ def request_pub_sub_engine(
                 time.sleep(sleep_duration)
 
                 iterations += 1
+
+            if ret is None:
+                logger.info(f"Iteration {retries}: Did not recieve a response after {timeout} seconds.")
+            else:
+                logger.info(f"Recieved response on iteration {retries}:\n {ret}")
+                logger.info(f"Time taken: {time.time() - start_time}")
 
             PUB_SUB_MANAGER.evict(request_id)
 
