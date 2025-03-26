@@ -177,8 +177,6 @@ def create_pub_sub_config(
         "kernel_id": kernel_id,
         "max_decoding_steps": str(max_tokens),
         "temperature": str(temperature),
-        "top_p": "0.95",
-        "top_k": "64",
     }
 
 
