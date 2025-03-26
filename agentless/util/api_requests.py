@@ -181,7 +181,7 @@ def create_pub_sub_config(
 
 
 def request_pub_sub_engine(
-    config, logger, max_retries=1, timeout=3600, prompt_cache=False
+    config, logger, max_retries=1, timeout=10800, prompt_cache=False
 ):
     ret = None
     retries = 0
