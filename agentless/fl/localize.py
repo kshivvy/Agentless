@@ -4,7 +4,6 @@ import json
 import os
 from threading import Lock
 
-from datasets import load_dataset
 from tqdm import tqdm
 
 from agentless.fl.FL import LLMFL
@@ -14,7 +13,7 @@ from agentless.util.preprocess_data import (
     filter_out_test_files,
     get_repo_structure,
 )
-from agentless.util.utils import load_existing_instance_ids, load_jsonl, setup_logger
+from agentless.util.utils import load_existing_instance_ids, load_jsonl, setup_logger, load_swebench_dataset
 from agentless.pub_sub import manager
 
 MAX_RETRIES = 5
@@ -397,7 +396,7 @@ def localize_instance(
 
 
 def localize_irrelevant(args):
-    swe_bench_data = load_dataset(args.dataset, split=args.split)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
     existing_instance_ids = (
         load_existing_instance_ids(args.output_file) if args.skip_existing else set()
     )
@@ -431,7 +430,7 @@ def localize_irrelevant(args):
 
 
 def localize(args):
-    swe_bench_data = load_dataset(args.dataset, split=args.split)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
     start_file_locs = load_jsonl(args.start_file) if args.start_file else None
     existing_instance_ids = (
         load_existing_instance_ids(args.output_file) if args.skip_existing else set()
@@ -589,6 +588,8 @@ def main():
         default="test",
         choices=["test", "dev"]
     )
+    parser.add_argument("--shard", type=int, default=-1)
+    parser.add_argument("--num_shards", type=int, default=-1)
     parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
     parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 

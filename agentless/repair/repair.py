@@ -5,7 +5,6 @@ import os
 from difflib import unified_diff
 from threading import Lock
 
-from datasets import load_dataset
 from tqdm import tqdm
 
 from agentless.util.api_requests import num_tokens_from_messages
@@ -27,7 +26,7 @@ from agentless.util.preprocess_data import (
     line_wrap_content,
     transfer_arb_locs_to_locs,
 )
-from agentless.util.utils import cleanup_logger, load_jsonl, setup_logger
+from agentless.util.utils import cleanup_logger, load_jsonl, setup_logger, load_swebench_dataset
 from agentless.pub_sub import manager
 
 repair_relevant_file_instruction = """
@@ -536,7 +535,7 @@ def repair(args):
     with open(f"{args.output_folder}/args.json", "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    swe_bench_data = load_dataset(args.dataset, split=args.split)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
     locs = load_jsonl(args.loc_file)
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
@@ -785,6 +784,8 @@ def main():
         default="test",
         choices=["test", "dev"]
     )
+    parser.add_argument("--shard", type=int, default=-1)
+    parser.add_argument("--num_shards", type=int, default=-1)
     parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
     parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 

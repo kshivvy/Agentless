@@ -2,12 +2,11 @@ import argparse
 import json
 import os
 
-from datasets import load_dataset
 from tqdm import tqdm
 
 from agentless.util.api_requests import num_tokens_from_messages
 from agentless.util.model import make_model
-from agentless.util.utils import load_jsonl, setup_logger
+from agentless.util.utils import load_jsonl, setup_logger, load_swebench_dataset
 
 MAX_CONTEXT_LENGTH = 128000
 
@@ -150,7 +149,7 @@ def select_tests(args):
             test = json_obj["tests_passing_in_original_repo"]
             instance_test_dict[instance_id] = test
 
-    swe_bench_data = load_dataset(args.dataset, split=args.split)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
     instance_ids = (
         swe_bench_data["instance_id"]
         if args.instance_ids is None

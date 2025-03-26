@@ -4,8 +4,10 @@
 MODEL="${MODEL:-als:bard}"
 
 # The dataset {verified, lite} and split {test, dev} to use.
-DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Lite}"
-SPLIT_NAME="${SPLIT_NAME:-dev}"
+DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Verified}"
+SPLIT_NAME="${SPLIT_NAME:-test}"
+SHARD="${SHARD:--1}"
+NUM_SHARDS="${NUM_SHARDS:--1}"
 
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-$USER-request}"
@@ -19,7 +21,7 @@ echo GCS upload directory: $DEST_DIR
 set -e  # Exit on error
 
 # Set parallelism level - can be adjusted based on available resources
-NUM_THREADS="${NUM_THREADS:-256}"
+NUM_THREADS="${NUM_THREADS:-1}"
 NUM_WORKERS_UPLOAD="${NUM_WORKERS_UPLOAD:-32}"
 
 # Variables for checkpointing
@@ -114,7 +116,9 @@ python agentless/fl/localize.py --file_level \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME
+                             --split $SPLIT_NAME \\
+                             --shard $SHARD \\
+                             --num_shards $NUM_SHARDS
 "
 
 upload_results_to_gcs
@@ -144,7 +148,9 @@ python agentless/fl/localize.py --related_level \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME
+                             --split $SPLIT_NAME \\
+                             --shard $SHARD \\
+                             --num_shards $NUM_SHARDS
 "
 
 upload_results_to_gcs
@@ -165,7 +171,9 @@ python agentless/fl/localize.py --fine_grain_line_level \\
                              --topic_id $TOPIC_ID \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME
+                             --split $SPLIT_NAME \\
+                             --shard $SHARD \\
+                             --num_shards $NUM_SHARDS
 "
 
 upload_results_to_gcs
@@ -178,7 +186,9 @@ python agentless/fl/localize.py --merge \\
                              --num_samples 4 \\
                              --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \\
                              --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME
+                             --split $SPLIT_NAME \\
+                             --shard $SHARD \\
+                             --num_shards $NUM_SHARDS
 "
 
 upload_results_to_gcs
@@ -215,7 +225,9 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
                                            --topic_id $TOPIC_ID \
                                            --subscription_id $SUBSCRIPTION_ID \
                                            --dataset $DATASET_NAME \
-                                           --split $SPLIT_NAME
+                                           --split $SPLIT_NAME \
+                                           --shard $SHARD \
+                                           --num_shards $NUM_SHARDS
             # Save patch checkpoint
             echo $((i+1)) > "$PATCH_CHECKPOINT_FILE"
         else

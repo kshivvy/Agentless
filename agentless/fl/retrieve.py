@@ -4,7 +4,6 @@ import json
 import os
 from threading import Lock
 
-from datasets import load_dataset
 from tqdm import tqdm
 
 from agentless.fl.Index import EmbeddingIndex
@@ -13,7 +12,7 @@ from agentless.util.preprocess_data import (
     filter_out_test_files,
     get_repo_structure,
 )
-from agentless.util.utils import load_json, load_jsonl, setup_logger
+from agentless.util.utils import load_json, load_jsonl, setup_logger, load_swebench_dataset
 
 
 def retrieve_locs(bug, args, swe_bench_data, found_files, prev_o, write_lock=None):
@@ -97,7 +96,7 @@ def retrieve(args):
     else:
         found_files = []
 
-    swe_bench_data = load_dataset(args.dataset, split=args.split)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
     if args.num_threads == 1:
@@ -166,7 +165,8 @@ def main():
         default="test",
         choices=["test", "dev"]
     )
-
+    parser.add_argument("--shard", type=int, default=-1)
+    parser.add_argument("--num_shards", type=int, default=-1)
     args = parser.parse_args()
 
     args.output_file = os.path.join(args.output_folder, args.output_file)

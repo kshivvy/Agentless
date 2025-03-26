@@ -2,6 +2,8 @@ import json
 import logging
 import os
 
+from datasets import load_dataset
+
 
 def load_jsonl(filepath):
     """
@@ -91,3 +93,18 @@ def load_existing_instance_ids(output_file):
                 except json.JSONDecodeError:
                     continue
     return instance_ids
+
+
+def load_swebench_dataset(
+        dataset: str,
+        split: str,
+        shard: int,
+        num_shards: int,
+):
+    swebench_dataset = load_dataset(dataset, split=split)
+
+    if shard >= 0 and num_shards > 0:
+        # Shard the dataset to only process a fraction of the examples.
+        return [x for i, x in enumerate(swebench_dataset) if i % num_shards == shard] 
+
+    return swebench_dataset
