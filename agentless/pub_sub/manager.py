@@ -16,6 +16,12 @@ REQUEST_TOPIC_ID = "lamda-request"
 # The Pub/Sub subscription IDs.
 RESPONSE_SUBSCRIPTION_ID = "lamda-response-sub"
 
+# The dataset shard index.
+SHARD = -1
+
+# The number of shards the dataset has been split into.
+NUM_SHARDS = -1
+
 class PubSubManager:
     def __init__(
             self,
@@ -52,6 +58,9 @@ class PubSubManager:
         topic_path = self.publisher.topic_path(self.project_id, self.topic_id)
 
         data = data_str.encode("utf-8")
+
+        attributes["shard"] = str(SHARD)
+        attributes["num_shards"] = str(NUM_SHARDS)
 
         # When you publish a message, the client returns a future.
         future = self.publisher.publish(topic_path, data, request_id=request_id, **attributes)

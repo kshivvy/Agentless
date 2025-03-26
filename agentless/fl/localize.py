@@ -597,6 +597,9 @@ def main():
     args.output_file = os.path.join(args.output_folder, args.output_file)
     check_valid_args(args)
 
+    manager.SHARD = args.shard
+    manager.NUM_SHARDS = args.num_shards
+
     manager.PUB_SUB_MANAGER.topic_id = args.topic_id
     manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
     manager.PUB_SUB_MANAGER.start_listening()

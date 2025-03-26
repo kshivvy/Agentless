@@ -791,6 +791,9 @@ def main():
 
     args = parser.parse_args()
 
+    manager.SHARD = args.shard
+    manager.NUM_SHARDS = args.num_shards
+
     manager.PUB_SUB_MANAGER.topic_id = args.topic_id
     manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
     manager.PUB_SUB_MANAGER.start_listening()

@@ -4,10 +4,10 @@
 MODEL="${MODEL:-als:bard}"
 
 # The dataset {verified, lite} and split {test, dev} to use.
-DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Verified}"
-SPLIT_NAME="${SPLIT_NAME:-test}"
-SHARD="${SHARD:--1}"
-NUM_SHARDS="${NUM_SHARDS:--1}"
+DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Lite}"
+SPLIT_NAME="${SPLIT_NAME:-dev}"
+SHARD="${SHARD:-0}"
+NUM_SHARDS="${NUM_SHARDS:-1}"
 
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-$USER-request}"
