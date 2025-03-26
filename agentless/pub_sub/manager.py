@@ -59,7 +59,7 @@ class PubSubManager:
 
         data = data_str.encode("utf-8")
 
-        attributes["shard"] = str(SHARD)
+        attributes["shard_index"] = str(SHARD)
         attributes["num_shards"] = str(NUM_SHARDS)
 
         # When you publish a message, the client returns a future.
