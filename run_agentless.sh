@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # LaMDA CLI --kernel_id
-MODEL="${MODEL:-als:bard}"
+MODEL="${MODEL:-evergreen2://blade:gdm-aip-fastpath-agent-generate-service-prod/lmroot:v3_s}"
 
 # The dataset {verified, lite} and split {test, dev} to use.
 DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Lite}"
 SPLIT_NAME="${SPLIT_NAME:-dev}"
-SHARD="${SHARD:-0}"
+SHARD_INDEX="${SHARD_INDEX:-0}"
 NUM_SHARDS="${NUM_SHARDS:-1}"
 
 # Pub/Sub topics
@@ -21,7 +21,7 @@ echo GCS upload directory: $DEST_DIR
 set -e  # Exit on error
 
 # Set parallelism level - can be adjusted based on available resources
-NUM_THREADS="${NUM_THREADS:-1}"
+NUM_THREADS="${NUM_THREADS:-23}"
 NUM_WORKERS_UPLOAD="${NUM_WORKERS_UPLOAD:-32}"
 
 # Variables for checkpointing
@@ -117,7 +117,7 @@ python agentless/fl/localize.py --file_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD \\
+                             --shard $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -149,7 +149,7 @@ python agentless/fl/localize.py --related_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD \\
+                             --shard $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -172,7 +172,7 @@ python agentless/fl/localize.py --fine_grain_line_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD \\
+                             --shard $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -187,7 +187,7 @@ python agentless/fl/localize.py --merge \\
                              --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD \\
+                             --shard $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -226,7 +226,7 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
                                            --subscription_id $SUBSCRIPTION_ID \
                                            --dataset $DATASET_NAME \
                                            --split $SPLIT_NAME \
-                                           --shard $SHARD \
+                                           --shard $SHARD_INDEX \
                                            --num_shards $NUM_SHARDS
             # Save patch checkpoint
             echo $((i+1)) > "$PATCH_CHECKPOINT_FILE"
