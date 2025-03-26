@@ -414,7 +414,7 @@ class PubSubChatDecoder(DecoderBase):
                 self.logger,
             )
             return {
-                "response": ret,
+                "response": ret or "",
                 # TODO(kshivvy): Get the number of completion tokens and prompt tokens.
                 "usage": {
                     "completion_tokens": 0,

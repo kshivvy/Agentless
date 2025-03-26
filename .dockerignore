@@ -190,3 +190,8 @@ get_repo_structure/test_repo/
 *.ipynb
 
 .git
+
+logfile.txt
+openai_test.py
+pubsub_test.py
+scrat
