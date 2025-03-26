@@ -1,3 +1,4 @@
+from concurrent import futures
 import json
 from abc import ABC, abstractmethod
 from typing import List
@@ -399,7 +400,7 @@ class PubSubChatDecoder(DecoderBase):
         batch_size = min(self.batch_size, num_samples)
 
         trajs = []
-        for _ in range(num_samples):
+        def generate_sample(i: int):
             # TODO(kshivvy): Apply the temperature, max_tokens, etc.
             config = create_pub_sub_config(
                 data_str=message,
@@ -412,29 +413,19 @@ class PubSubChatDecoder(DecoderBase):
                 config,
                 self.logger,
             )
+            return {
+                "response": ret,
+                # TODO(kshivvy): Get the number of completion tokens and prompt tokens.
+                "usage": {
+                    "completion_tokens": 0,
+                    "prompt_tokens": 0,
+                },
+            }
 
-            if ret:
-                trajs.append(
-                    {
-                        "response": ret,
-                        # TODO(kshivvy): Get the number of completion tokens and prompt tokens.
-                        "usage": {
-                            "completion_tokens": 0,
-                            "prompt_tokens": 0,
-                        },
-                    }
-                )
-            else:
-                trajs.append(
-                    {
-                        "response": "",
-                        "usage": {
-                            "completion_tokens": 0,
-                            "prompt_tokens": 0,
-                        },
-                    }
-                )
+        with futures.ThreadPoolExecutor(max_workers=num_samples) as executor:
+            traj_futures = executor.map(generate_sample, range(num_samples))
 
+        trajs = [f.result() for f in traj_futures]
         return trajs
 
     def is_direct_completion(self) -> bool:
