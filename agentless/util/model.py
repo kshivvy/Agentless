@@ -423,9 +423,8 @@ class PubSubChatDecoder(DecoderBase):
             }
 
         with futures.ThreadPoolExecutor(max_workers=num_samples) as executor:
-            traj_futures = executor.map(generate_sample, range(num_samples))
+            trajs = list(executor.map(generate_sample, range(num_samples)))
 
-        trajs = [f.result() for f in traj_futures]
         return trajs
 
     def is_direct_completion(self) -> bool:
