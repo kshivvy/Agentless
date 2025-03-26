@@ -19,7 +19,7 @@ echo GCS upload directory: $DEST_DIR
 set -e  # Exit on error
 
 # Set parallelism level - can be adjusted based on available resources
-NUM_THREADS="${NUM_THREADS:-32}"
+NUM_THREADS="${NUM_THREADS:-256}"
 NUM_WORKERS_UPLOAD="${NUM_WORKERS_UPLOAD:-32}"
 
 # Variables for checkpointing
