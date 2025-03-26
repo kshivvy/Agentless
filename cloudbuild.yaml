@@ -6,9 +6,9 @@ steps:
       # https://cloud.google.com/build/docs/build-config-file-schema#network
       - --network=cloudbuild
       - '--target=app'
-      - '--tag=us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v1.5_noemb_nodocker-dev'
+      - '--tag=us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v1.5_noemb_nodocker
       - '.'
 options:
   machineType: 'E2_HIGHCPU_32'
 images:
-  - 'us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v1.5_noemb_nodocker-dev'
+  - 'us-central1-docker.pkg.dev/docker-rlef-exploration/agentless-repo/agentless-image:v1.5_noemb_nodocker'
