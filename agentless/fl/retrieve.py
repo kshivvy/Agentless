@@ -96,7 +96,7 @@ def retrieve(args):
     else:
         found_files = []
 
-    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard_index=args.shard_index, num_shards=args.num_shards)
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
     if args.num_threads == 1:
@@ -165,7 +165,7 @@ def main():
         default="test",
         choices=["test", "dev"]
     )
-    parser.add_argument("--shard", type=int, default=-1)
+    parser.add_argument("--shard_index", type=int, default=-1)
     parser.add_argument("--num_shards", type=int, default=-1)
     args = parser.parse_args()
 

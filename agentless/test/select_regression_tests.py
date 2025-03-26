@@ -149,7 +149,7 @@ def select_tests(args):
             test = json_obj["tests_passing_in_original_repo"]
             instance_test_dict[instance_id] = test
 
-    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard_index=args.shard_index, num_shards=args.num_shards)
     instance_ids = (
         swe_bench_data["instance_id"]
         if args.instance_ids is None

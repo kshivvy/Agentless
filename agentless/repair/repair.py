@@ -535,7 +535,7 @@ def repair(args):
     with open(f"{args.output_folder}/args.json", "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard=args.shard, num_shards=args.num_shards)
+    swe_bench_data = load_swebench_dataset(args.dataset, split=args.split, shard_index=args.shard_index, num_shards=args.num_shards)
     locs = load_jsonl(args.loc_file)
     prev_o = load_jsonl(args.output_file) if os.path.exists(args.output_file) else []
 
@@ -784,14 +784,14 @@ def main():
         default="test",
         choices=["test", "dev"]
     )
-    parser.add_argument("--shard", type=int, default=-1)
+    parser.add_argument("--shard_index", type=int, default=-1)
     parser.add_argument("--num_shards", type=int, default=-1)
     parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
     parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
 
     args = parser.parse_args()
 
-    manager.SHARD = args.shard
+    manager.SHARD_INDEX = args.shard_index
     manager.NUM_SHARDS = args.num_shards
 
     manager.PUB_SUB_MANAGER.topic_id = args.topic_id

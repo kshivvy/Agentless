@@ -117,7 +117,7 @@ python agentless/fl/localize.py --file_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD_INDEX \\
+                             --shard_index $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -149,7 +149,7 @@ python agentless/fl/localize.py --related_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD_INDEX \\
+                             --shard_index $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -172,7 +172,7 @@ python agentless/fl/localize.py --fine_grain_line_level \\
                              --subscription_id $SUBSCRIPTION_ID \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD_INDEX \\
+                             --shard_index $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -187,7 +187,7 @@ python agentless/fl/localize.py --merge \\
                              --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \\
                              --dataset $DATASET_NAME \\
                              --split $SPLIT_NAME \\
-                             --shard $SHARD_INDEX \\
+                             --shard_index $SHARD_INDEX \\
                              --num_shards $NUM_SHARDS
 "
 
@@ -226,7 +226,7 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
                                            --subscription_id $SUBSCRIPTION_ID \
                                            --dataset $DATASET_NAME \
                                            --split $SPLIT_NAME \
-                                           --shard $SHARD_INDEX \
+                                           --shard_index $SHARD_INDEX \
                                            --num_shards $NUM_SHARDS
             # Save patch checkpoint
             echo $((i+1)) > "$PATCH_CHECKPOINT_FILE"

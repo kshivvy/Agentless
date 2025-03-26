@@ -98,13 +98,13 @@ def load_existing_instance_ids(output_file):
 def load_swebench_dataset(
         dataset: str,
         split: str,
-        shard: int,
+        shard_index: int,
         num_shards: int,
 ):
     swebench_dataset = load_dataset(dataset, split=split)
 
-    if shard >= 0 and num_shards > 0:
+    if shard_index >= 0 and num_shards > 0:
         # Shard the dataset to only process a fraction of the examples.
-        return [x for i, x in enumerate(swebench_dataset) if i % num_shards == shard] 
+        return [x for i, x in enumerate(swebench_dataset) if i % num_shards == shard_index] 
 
     return swebench_dataset
