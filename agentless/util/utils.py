@@ -4,6 +4,7 @@ import os
 
 from datasets import load_dataset
 
+from tenacity import retry, wait_exponential, stop_after_attempt
 
 def load_jsonl(filepath):
     """
@@ -95,12 +96,17 @@ def load_existing_instance_ids(output_file):
     return instance_ids
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(25),                 
+    reraise=True
+)
 def load_swebench_dataset(
         dataset: str,
         split: str,
         shard_index: int,
         num_shards: int,
-):
+):  
     swebench_dataset = load_dataset(dataset, split=split)
 
     if shard_index >= 0 and num_shards > 0:
