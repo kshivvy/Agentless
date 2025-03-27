@@ -6,15 +6,16 @@ import time
 import argparse
 
 from google.cloud import pubsub_v1
+import google.api_core.exceptions
 
 # The GCP project ID.
 _PROJECT_ID = "docker-rlef-exploration"
 
 # The Pub/Sub topic IDs.
-REQUEST_TOPIC_ID = "lamda-request"
+REQUEST_TOPIC_ID = "kshivvy-req"
 
 # The Pub/Sub subscription IDs.
-RESPONSE_SUBSCRIPTION_ID = "lamda-response-sub"
+RESPONSE_SUBSCRIPTION_ID = "kshivvy-resp-sub"
 
 # The dataset shard index.
 SHARD_INDEX = -1
@@ -22,12 +23,17 @@ SHARD_INDEX = -1
 # The number of shards the dataset has been split into.
 NUM_SHARDS = -1
 
+# The session ID tag should be changed when launching mulitple
+# python commands in parallel, such that requests/responses are
+# routed correctly.
+SESSION_ID = -1
+
 class PubSubManager:
     def __init__(
             self,
             project_id: str = _PROJECT_ID,
             topic_id: str = REQUEST_TOPIC_ID,
-            subscription_id: str = RESPONSE_SUBSCRIPTION_ID
+            subscription_id: str = RESPONSE_SUBSCRIPTION_ID,
         ):
         # The GCP project ID, model request topic ID, and model response subscription ID.
         self.project_id = project_id
@@ -61,6 +67,7 @@ class PubSubManager:
 
         attributes["shard_index"] = str(SHARD_INDEX)
         attributes["num_shards"] = str(NUM_SHARDS)
+        attributes["session_id"] = str(SESSION_ID)
 
         # When you publish a message, the client returns a future.
         future = self.publisher.publish(topic_path, data, request_id=request_id, **attributes)
@@ -70,7 +77,30 @@ class PubSubManager:
     def listen(self):
         # The `subscription_path` method creates a fully qualified identifier
         # in the form `projects/{project_id}/subscriptions/{subscription_id}`
-        subscription_path = self.subscriber.subscription_path(self.project_id, self.subscription_id)
+        
+        if SESSION_ID == -1:
+            subscription_path = self.subscriber.subscription_path(self.project_id, self.subscription_id)
+            print(f"subscription_path: {subscription_path}")
+        else:
+            # Create a new subscription for this specific session ID. We assume this subscription
+            # will be cleaned up on the server side.
+            subscription_path = self.subscriber.subscription_path(
+                self.project_id,
+                f"{self.subscription_id}-sess-{SESSION_ID}"
+            )
+            topic_id_prefix = self.topic_id.removesuffix('-req')
+            topic_path = self.publisher.topic_path(self.project_id, f"{topic_id_prefix}-resp")
+            subscription_filter = f'attributes.shard_index = "{SHARD_INDEX}" AND attributes.session_id = "{SESSION_ID}"'
+            subscription = pubsub_v1.types.Subscription(
+                name=subscription_path,
+                topic=topic_path,
+                filter=subscription_filter,
+            )
+            try:
+                self.subscriber.create_subscription(subscription)
+                print(f"Created subscription {subscription_path}")
+            except google.api_core.exceptions.AlreadyExists:
+                print(f"Subscription {subscription_path} under topic {topic_path} already exists.")
 
         def callback(message):
             if self.stop_event.is_set():
