@@ -788,11 +788,13 @@ def main():
     parser.add_argument("--num_shards", type=int, default=-1)
     parser.add_argument("--topic_id", type=str, default=manager.REQUEST_TOPIC_ID)
     parser.add_argument("--subscription_id", type=str, default=manager.RESPONSE_SUBSCRIPTION_ID)
+    parser.add_argument("--session_id", type=int, default=manager.SESSION_ID)
 
     args = parser.parse_args()
 
     manager.SHARD_INDEX = args.shard_index
     manager.NUM_SHARDS = args.num_shards
+    manager.SESSION_ID = args.session_id
 
     manager.PUB_SUB_MANAGER.topic_id = args.topic_id
     manager.PUB_SUB_MANAGER.subscription_id = args.subscription_id
