@@ -18,6 +18,9 @@ fi
 
 # Google Compute Storage arguments
 DEST_DIR="${DEST_DIR:-v1p5_noemb_nodocker/$USER-$(date +"%y%m%d-%H%M%S")}"
+if [[ "$CLOUD_RUN_TASK_COUNT" -gt 1 ]]; then
+  DEST_DIR="${DEST_DIR%/}/shard-$(printf "%02d" $CLOUD_RUN_TASK_INDEX)"
+fi
 echo GCS upload directory: $DEST_DIR
 
 # Enable error handling
