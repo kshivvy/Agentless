@@ -28,7 +28,7 @@ NUM_THREADS="${NUM_THREADS:-32}"
 NUM_WORKERS_UPLOAD="${NUM_WORKERS_UPLOAD:-32}"
 
 # Variables for checkpointing
-RESULTS_DIR="${RESULTS_DIR:-results}"
+RESULTS_DIR="${RESULTS_DIR:-results/$(date +"%m/%d")}"
 CHECKPOINT_FILE="$RESULTS_DIR/checkpoint.txt"
 PROGRESS_LOG="$RESULTS_DIR/progress.log"
 CURRENT_STEP=0

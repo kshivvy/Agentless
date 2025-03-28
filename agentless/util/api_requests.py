@@ -1,3 +1,4 @@
+from concurrent import futures
 import time
 from typing import Any, Dict, Union
 
@@ -182,48 +183,22 @@ def create_pub_sub_config(
 
 def request_pub_sub_engine(
     config, logger, max_retries=1, timeout=10800, prompt_cache=False
-):
-    ret = None
-    retries = 0
-
-    while ret is None and retries < max_retries:
+) -> str:
+    for i in range(max_retries):
+        fut = request_pub_sub_engine_async(config, logger, prompt_cache=prompt_cache)
         try:
-            start_time = time.time()
+            return fut.result(timeout=timeout)
+        except futures.TimeoutError:
+            continue
+    logger.error("All pubsub model retry failed. Returning empty response.")
+    return ""
 
-            request_id = PUB_SUB_MANAGER.get_request_id()
 
-            PUB_SUB_MANAGER.publish(
-                data_str=config.pop("data_str", ""),
-                request_id=request_id,
-                attributes=config,
-            )
-
-            iterations = 1
-            while ret is None and (time.time() - start_time) <= timeout:
-                ret = PUB_SUB_MANAGER.get(request_id)
-
-                # Sleep with exponential backoff to avoid lock contention.
-                sleep_duration = min(0.1 * 2**iterations, 5)
-                time.sleep(sleep_duration)
-
-                iterations += 1
-
-            if ret is None:
-                logger.info(f"Iteration {retries}: Did not recieve a response after {timeout} seconds.")
-            else:
-                logger.info(f"Recieved response on iteration {retries}:\n {ret}")
-                logger.info(f"Time taken: {time.time() - start_time}")
-
-            PUB_SUB_MANAGER.evict(request_id)
-
-        except Exception as e:
-            print(e)
-            logger.error("Unknown error. Waiting...", exc_info=True)
-            if time.time() - start_time >= timeout:
-                logger.warning("Request timed out. Retrying...")
-            else:
-                logger.warning("Retrying after an unknown error...")
-            time.sleep(10 * retries)
-        retries += 1
-
-    return ret
+def request_pub_sub_engine_async(config, logger, prompt_cache=False):
+    start_time = time.time()
+    data_str = config.pop("data_str")
+    fut = PUB_SUB_MANAGER.call_async(data_str, config)
+    fut.add_done_callback(
+        lambda _: logger.info("Time taken: %.2f", time.time() - start_time)
+    )
+    return fut

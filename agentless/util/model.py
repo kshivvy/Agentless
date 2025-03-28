@@ -11,7 +11,7 @@ from agentless.util.api_requests import (
     create_pub_sub_config,
     request_anthropic_engine,
     request_chatgpt_engine,
-    request_pub_sub_engine,
+    request_pub_sub_engine_async,
 )
 
 
@@ -397,10 +397,9 @@ class PubSubChatDecoder(DecoderBase):
     ) -> List[dict]:
         if self.temperature == 0:
             assert num_samples == 1
-        batch_size = min(self.batch_size, num_samples)
 
-        trajs = []
-        def generate_sample(i: int):
+        futures = []
+        for _ in range(num_samples):
             # TODO(kshivvy): Apply the temperature, max_tokens, etc.
             config = create_pub_sub_config(
                 data_str=message,
@@ -408,24 +407,22 @@ class PubSubChatDecoder(DecoderBase):
                 max_tokens=self.max_new_tokens,
                 temperature=self.temperature,
             )
-
-            ret = request_pub_sub_engine(
-                config,
-                self.logger,
+            futures.append(
+                request_pub_sub_engine_async(
+                    config, self.logger, prompt_cache=prompt_cache
+                )
             )
-            return {
-                "response": ret or "",
+        return [
+            {
+                "response": f.result(),
                 # TODO(kshivvy): Get the number of completion tokens and prompt tokens.
                 "usage": {
                     "completion_tokens": 0,
                     "prompt_tokens": 0,
                 },
             }
-
-        with futures.ThreadPoolExecutor(max_workers=num_samples) as executor:
-            trajs = list(executor.map(generate_sample, range(num_samples)))
-
-        return trajs
+            for f in futures
+        ]
 
     def is_direct_completion(self) -> bool:
         return False
