@@ -41,10 +41,6 @@ SKIP_EMBEDDING="${SKIP_EMBEDDING:-true}"
 # Create results directory
 mkdir -p $RESULTS_DIR
 
-# Git config is needed to run git commands during postprocessing.
-git config --global user.email "johndoe@google.com"
-git config --global user.name "John Doe"
-
 # Set gRPC verbosity level to ERROR to silence unnecessary logs
 # about skipping fork() handlers due to other threads calling into gRPC.
 export GRPC_VERBOSITY=ERROR

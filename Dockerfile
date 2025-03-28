@@ -14,7 +14,8 @@ RUN apt-get update && \
 
 # Git config is needed to run "git commit" during postprocessing.
 RUN git config --global user.email "johndoe@google.com" && \
-    git config --global user.name "John Doe"
+    git config --global user.name "John Doe" && \
+    git config --global init.defaultBranch main
 
 # Set the working directory inside the container
 WORKDIR /app
