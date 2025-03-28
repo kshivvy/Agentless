@@ -6,12 +6,15 @@ MODEL="${MODEL:-evergreen2:///mbns/vz/home/courier/mvuyyuru/rev18p1_v3p1m}"
 # The dataset {verified, lite} and split {test, dev} to use.
 DATASET_NAME="${DATASET_NAME:-princeton-nlp/SWE-bench_Lite}"
 SPLIT_NAME="${SPLIT_NAME:-dev}"
-SHARD_INDEX="${SHARD_INDEX:-0}"
-NUM_SHARDS="${NUM_SHARDS:-23}"
+SHARD_INDEX="${SHARD_INDEX:-${CLOUD_RUN_TASK_INDEX:-0}}"
+NUM_SHARDS="${NUM_SHARDS:-${CLOUD_RUN_TASK_COUNT:-23}}"
 
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-$USER-req}"
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-resp-sub}"
+if [[ "$CLOUD_RUN_TASK_COUNT" -gt 1 ]]; then
+  SUBSCRIPTION_ID="${SUBSCRIPTION_ID}${SHARD_INDEX}"
+fi
 
 # Google Compute Storage arguments
 DEST_DIR="${DEST_DIR:-v1p5_noemb_nodocker/$USER-$(date +"%y%m%d-%H%M%S")}"
@@ -69,11 +72,11 @@ load_checkpoint() {
 run_step() {
     local step_num="$1"
     local step_desc="$2"
-    local step_cmd="$3"
+    shift 2;
 
     if [ "$CURRENT_STEP" -lt "$step_num" ]; then
         log_progress "Step $step_num: $step_desc"
-        eval "$step_cmd"
+        "$@"
         save_checkpoint "$step_num"
     else
         log_progress "Skipping Step $step_num: $step_desc (already completed)"
@@ -106,90 +109,90 @@ log_progress "Using the hardcoded Google API key from api_requests.py"
 load_checkpoint
 
 # Step 1: File-level localization
-run_step 1 "Running file-level localization" "
-python agentless/fl/localize.py --file_level \\
-                             --output_folder $RESULTS_DIR/file_level \\
-                             --num_threads $NUM_THREADS \\
-                             --skip_existing \\
-                             --model $MODEL \\
-                             --backend google-internal \\
-                             --topic_id $TOPIC_ID \\
-                             --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME \\
-                             --shard_index $SHARD_INDEX \\
+run_step 1 "Running file-level localization" \
+python agentless/fl/localize.py --file_level \
+                             --output_folder $RESULTS_DIR/file_level \
+                             --num_threads $NUM_THREADS \
+                             --skip_existing \
+                             --model $MODEL \
+                             --backend google-internal \
+                             --topic_id $TOPIC_ID \
+                             --subscription_id $SUBSCRIPTION_ID \
+                             --dataset $DATASET_NAME \
+                             --split $SPLIT_NAME \
+                             --shard_index $SHARD_INDEX \
                              --num_shards $NUM_SHARDS
-"
+
 
 upload_results_to_gcs
 
 # Step 2: Select top N predicted files.
-run_step 2 "Select top N predicted files." "
-python agentless/fl/combine.py --retrieval_loc_file $RESULTS_DIR/file_level/loc_outputs.jsonl \\
-                            --model_loc_file $RESULTS_DIR/file_level/loc_outputs.jsonl \\
-                            --top_n 3 \\
+run_step 2 "Select top N predicted files." \
+python agentless/fl/combine.py --retrieval_loc_file $RESULTS_DIR/file_level/loc_outputs.jsonl \
+                            --model_loc_file $RESULTS_DIR/file_level/loc_outputs.jsonl \
+                            --top_n 3 \
                             --output_folder $RESULTS_DIR/file_level_combined
-"
+
 
 upload_results_to_gcs
 
 # Step 3: Localize to related elements
-run_step 3 "Localizing to related elements" "
-python agentless/fl/localize.py --related_level \\
-                             --output_folder $RESULTS_DIR/related_elements \\
-                             --top_n 3 \\
-                             --compress_assign \\
-                             --compress \\
-                             --start_file $RESULTS_DIR/file_level_combined/combined_locs.jsonl \\
-                             --num_threads $NUM_THREADS \\
-                             --skip_existing \\
-                             --model $MODEL \\
-                             --backend google-internal \\
-                             --topic_id $TOPIC_ID \\
-                             --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME \\
-                             --shard_index $SHARD_INDEX \\
+run_step 3 "Localizing to related elements" \
+python agentless/fl/localize.py --related_level \
+                             --output_folder $RESULTS_DIR/related_elements \
+                             --top_n 3 \
+                             --compress_assign \
+                             --compress \
+                             --start_file $RESULTS_DIR/file_level_combined/combined_locs.jsonl \
+                             --num_threads $NUM_THREADS \
+                             --skip_existing \
+                             --model $MODEL \
+                             --backend google-internal \
+                             --topic_id $TOPIC_ID \
+                             --subscription_id $SUBSCRIPTION_ID \
+                             --dataset $DATASET_NAME \
+                             --split $SPLIT_NAME \
+                             --shard_index $SHARD_INDEX \
                              --num_shards $NUM_SHARDS
-"
+
 
 upload_results_to_gcs
 
 # Step 4: Localize to edit locations with sampling
-run_step 4 "Localizing to edit locations" "
-python agentless/fl/localize.py --fine_grain_line_level \\
-                             --output_folder $RESULTS_DIR/edit_location_samples \\
-                             --top_n 3 \\
-                             --compress \\
-                             --temperature 0.8 \\
-                             --num_samples 4 \\
-                             --start_file $RESULTS_DIR/related_elements/loc_outputs.jsonl \\
-                             --num_threads $NUM_THREADS \\
-                             --skip_existing \\
-                             --model $MODEL \\
-                             --backend google-internal \\
-                             --topic_id $TOPIC_ID \\
-                             --subscription_id $SUBSCRIPTION_ID \\
-                             --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME \\
-                             --shard_index $SHARD_INDEX \\
+run_step 4 "Localizing to edit locations" \
+python agentless/fl/localize.py --fine_grain_line_level \
+                             --output_folder $RESULTS_DIR/edit_location_samples \
+                             --top_n 3 \
+                             --compress \
+                             --temperature 0.8 \
+                             --num_samples 4 \
+                             --start_file $RESULTS_DIR/related_elements/loc_outputs.jsonl \
+                             --num_threads $NUM_THREADS \
+                             --skip_existing \
+                             --model $MODEL \
+                             --backend google-internal \
+                             --topic_id $TOPIC_ID \
+                             --subscription_id $SUBSCRIPTION_ID \
+                             --dataset $DATASET_NAME \
+                             --split $SPLIT_NAME \
+                             --shard_index $SHARD_INDEX \
                              --num_shards $NUM_SHARDS
-"
+
 
 upload_results_to_gcs
 
 # Step 5: Separate the individual sets of edit locations
-run_step 5 "Separating edit location sets" "
-python agentless/fl/localize.py --merge \\
-                             --output_folder $RESULTS_DIR/edit_location_individual \\
-                             --top_n 3 \\
-                             --num_samples 4 \\
-                             --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \\
-                             --dataset $DATASET_NAME \\
-                             --split $SPLIT_NAME \\
-                             --shard_index $SHARD_INDEX \\
+run_step 5 "Separating edit location sets" \
+python agentless/fl/localize.py --merge \
+                             --output_folder $RESULTS_DIR/edit_location_individual \
+                             --top_n 3 \
+                             --num_samples 4 \
+                             --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \
+                             --dataset $DATASET_NAME \
+                             --split $SPLIT_NAME \
+                             --shard_index $SHARD_INDEX \
                              --num_shards $NUM_SHARDS
-"
+
 
 upload_results_to_gcs
 
@@ -244,12 +247,12 @@ fi
 upload_results_to_gcs
 
 # Step 7: Rerank and select final patches.
-run_step 7 "Reranking and selecting final patches" "
-python agentless/repair/rerank.py --patch_folder $RESULTS_DIR/repair_sample_1/,$RESULTS_DIR/repair_sample_2/,$RESULTS_DIR/repair_sample_3/,$RESULTS_DIR/repair_sample_4/ \\
-                                --num_samples 40 \\
-                                --deduplicate \\
+run_step 7 "Reranking and selecting final patches" \
+python agentless/repair/rerank.py --patch_folder $RESULTS_DIR/repair_sample_1/,$RESULTS_DIR/repair_sample_2/,$RESULTS_DIR/repair_sample_3/,$RESULTS_DIR/repair_sample_4/ \
+                                --num_samples 40 \
+                                --deduplicate \
                                 --output_file $RESULTS_DIR/all_preds.jsonl
-"
+
 
 upload_results_to_gcs
 
