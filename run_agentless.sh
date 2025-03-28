@@ -198,21 +198,15 @@ upload_results_to_gcs
 # Step 6: Generate patches for each of the 4 sets of edit locations
 if [ "$CURRENT_STEP" -lt 6 ]; then
     log_progress "Step 6: Generating patches (this may take a while)..."
-    
-    # Use a separate checkpoint for each patch sample
-    PATCH_CHECKPOINT_FILE="$RESULTS_DIR/patch_checkpoint.txt"
-    if [ -f "$PATCH_CHECKPOINT_FILE" ]; then
-        PATCH_START=$(cat "$PATCH_CHECKPOINT_FILE")
-        log_progress "Resuming patch generation from sample $PATCH_START"
-    else
-        PATCH_START=0
-        log_progress "Starting patch generation from the beginning"
-    fi
+
+    # --- Start Parallel Execution ---
+    # NOTE: Running 4 instances in parallel. Each instance uses NUM_THREADS.
+    # Ensure NUM_THREADS is set appropriately to avoid overloading the system.
+    # Total threads used will be approximately 4 * NUM_THREADS. Consider reducing NUM_THREADS.
 
     for i in {0..3}; do
-        if [ "$i" -ge "$PATCH_START" ]; then
-            log_progress "Generating patches for sample $((i+1)) of 4..."
-            python agentless/repair/repair.py --loc_file $RESULTS_DIR/edit_location_individual/loc_merged_${i}-${i}_outputs.jsonl \
+        log_progress "Generating patches for sample $((i+1)) of 4..."
+        python agentless/repair/repair.py  --loc_file $RESULTS_DIR/edit_location_individual/loc_merged_${i}-${i}_outputs.jsonl \
                                            --output_folder $RESULTS_DIR/repair_sample_$((i+1)) \
                                            --loc_interval \
                                            --top_n=3 \
@@ -229,15 +223,17 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
                                            --dataset $DATASET_NAME \
                                            --split $SPLIT_NAME \
                                            --shard_index $SHARD_INDEX \
-                                           --num_shards $NUM_SHARDS
-            # Save patch checkpoint
-            echo $((i+1)) > "$PATCH_CHECKPOINT_FILE"
-        else
-            log_progress "Skipping patch generation for sample $((i+1)) (already completed)"
-        fi
+                                           --num_shards $NUM_SHARDS \
+                                           --session_id $((i+1)) & # <-- Run in background
     done
 
-    rm -f "$PATCH_CHECKPOINT_FILE"  # Remove patch checkpoint after completion
+    # Wait for all background jobs launched in the loop to complete
+    log_progress "Waiting for all parallel patch generation jobs to complete..."
+    wait
+    log_progress "Parallel patch generation completed."
+    # --- End Parallel Execution ---
+
+    # Save the main checkpoint *after* all parallel jobs are finished
     save_checkpoint 6
 else
     log_progress "Skipping Step 6: Generating patches (already completed)"
