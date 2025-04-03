@@ -9,6 +9,11 @@ SPLIT_NAME="${SPLIT_NAME:-dev}"
 SHARD_INDEX="${SHARD_INDEX:-${CLOUD_RUN_TASK_INDEX:-0}}"
 NUM_SHARDS="${NUM_SHARDS:-${CLOUD_RUN_TASK_COUNT:-23}}"
 
+IFS="," read -r -a SAMPLES_SHAPE <<< "${SAMPLES_SHAPE:-4,4,10}"
+LOCALIZE_EDIT_LOC_NUM_SAMPLES="${SAMPLES_SHAPE[0]}"
+REPAIR_OUTER_LOOP="${SAMPLES_SHAPE[1]}"
+REPAIR_NUM_SAMPLES="${SAMPLES_SHAPE[2]}"
+
 # Pub/Sub topics
 TOPIC_ID="${TOPIC_ID:-$USER-req}"
 SUBSCRIPTION_ID="${SUBSCRIPTION_ID:-$USER-resp-sub}"
@@ -164,7 +169,7 @@ python agentless/fl/localize.py --fine_grain_line_level \
                              --top_n 3 \
                              --compress \
                              --temperature 0.8 \
-                             --num_samples 4 \
+                             --num_samples $LOCALIZE_EDIT_LOC_NUM_SAMPLES \
                              --start_file $RESULTS_DIR/related_elements/loc_outputs.jsonl \
                              --num_threads $NUM_THREADS \
                              --skip_existing \
@@ -185,7 +190,7 @@ run_step 5 "Separating edit location sets" \
 python agentless/fl/localize.py --merge \
                              --output_folder $RESULTS_DIR/edit_location_individual \
                              --top_n 3 \
-                             --num_samples 4 \
+                             --num_samples $LOCALIZE_EDIT_LOC_NUM_SAMPLES \
                              --start_file $RESULTS_DIR/edit_location_samples/loc_outputs.jsonl \
                              --dataset $DATASET_NAME \
                              --split $SPLIT_NAME \
@@ -204,14 +209,14 @@ if [ "$CURRENT_STEP" -lt 6 ]; then
     # Ensure NUM_THREADS is set appropriately to avoid overloading the system.
     # Total threads used will be approximately 4 * NUM_THREADS. Consider reducing NUM_THREADS.
 
-    for i in {0..3}; do
-        log_progress "Generating patches for sample $((i+1)) of 4..."
+    for (( i=0; i < $REPAIR_OUTER_LOOP; i++ )); do
+        log_progress "Generating patches for sample $((i+1)) of $REPAIR_OUTER_LOOP..."
         python agentless/repair/repair.py  --loc_file $RESULTS_DIR/edit_location_individual/loc_merged_${i}-${i}_outputs.jsonl \
                                            --output_folder $RESULTS_DIR/repair_sample_$((i+1)) \
                                            --loc_interval \
                                            --top_n=3 \
                                            --context_window=10 \
-                                           --max_samples 10 \
+                                           --max_samples $REPAIR_NUM_SAMPLES \
                                            --cot \
                                            --diff_format \
                                            --gen_and_process \
@@ -241,10 +246,16 @@ fi
 
 upload_results_to_gcs
 
+patch_folder_csv=$RESULTS_DIR/repair_sample_1/
+for (( i=2; i <= $REPAIR_OUTER_LOOP; i++ )); do
+    patch_folder_csv+=",$RESULTS_DIR/repair_sample_$i/"
+done
+
+
 # Step 7: Rerank and select final patches.
 run_step 7 "Reranking and selecting final patches" \
-python agentless/repair/rerank.py --patch_folder $RESULTS_DIR/repair_sample_1/,$RESULTS_DIR/repair_sample_2/,$RESULTS_DIR/repair_sample_3/,$RESULTS_DIR/repair_sample_4/ \
-                                --num_samples 40 \
+python agentless/repair/rerank.py --patch_folder $patch_folder_csv \
+                                --num_samples $((REPAIR_NUM_SAMPLES * REPAIR_OUTER_LOOP)) \
                                 --deduplicate \
                                 --output_file $RESULTS_DIR/all_preds.jsonl
 
